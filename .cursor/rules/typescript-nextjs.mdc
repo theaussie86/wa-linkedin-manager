@@ -1,0 +1,33 @@
+---
+globs: *.ts,*.tsx,*.js,*.jsx
+description: TypeScript and Next.js coding standards
+---
+
+# TypeScript & Next.js Standards
+
+## TypeScript Konfiguration:
+
+- Hauptkonfiguration: [tsconfig.json](mdc:tsconfig.json)
+- Next.js spezifische Typen: [next-env.d.ts](mdc:next-env.d.ts)
+
+## Code Standards:
+
+- Verwende strikte TypeScript-Konfiguration
+- Generiere Payload-Typen automatisch in [src/payload-types.ts](mdc:src/payload-types.ts)
+- Verwende semicolons am Ende von Statements
+
+## Next.js App Router:
+
+- Struktur: [src/app/](mdc:src/app/) mit Route Groups
+- Frontend: `(frontend)` Route Group
+- Payload Admin: `(payload)` Route Group
+
+## ESLint:
+
+- Konfiguration: [eslint.config.mjs](mdc:eslint.config.mjs)
+- Führe `npm run lint` vor Commits aus
+
+## Testing:
+
+- Vitest Konfiguration: [vitest.config.mts](mdc:vitest.config.mts)
+- Playwright für E2E: [playwright.config.ts](mdc:playwright.config.ts)

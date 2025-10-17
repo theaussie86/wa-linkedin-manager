@@ -1,0 +1,33 @@
+---
+description: Docker development environment setup
+---
+
+# Docker Development Environment
+
+## Docker Setup:
+
+- [Dockerfile](mdc:Dockerfile) - Container-Definition
+- [docker-compose.yml](mdc:docker-compose.yml) - Service-Orchestrierung
+
+## Services:
+
+- `payload` - Node.js App (Port 3000)
+- `supabase-db` - PostgreSQL Datenbank
+- Volumes für Persistierung
+
+## Development Workflow:
+
+1. `docker compose up -d supabase-db` - Datenbank starten
+2. `npm run dev` - Lokale App starten (verbindet zu Docker-DB)
+3. Oder `docker compose up` - Alles in Docker
+
+## Wichtige Ports:
+
+- 3000: Payload App
+- 5432: PostgreSQL (über Pooler)
+- 8000: Supabase API
+
+## Volumes:
+
+- `supabase_db_data` - Datenbank-Persistierung
+- `node_modules` - npm Dependencies Cache

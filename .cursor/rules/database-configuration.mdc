@@ -1,0 +1,29 @@
+---
+description: Database configuration and connection setup
+---
+
+# Datenbankkonfiguration
+
+## Supabase PostgreSQL Setup:
+
+- Läuft in Docker-Containern
+- Pooler auf Port 5432 exponiert
+- Benutzer: `supabase_admin`
+- Passwort: `your-super-secret-and-long-postgres-password`
+
+## Verbindungsstring:
+
+```
+DATABASE_URI=postgresql://supabase_admin:your-super-secret-and-long-postgres-password@localhost:5432/postgres
+```
+
+## Docker Services:
+
+- `supabase-db` - PostgreSQL Datenbank
+- `supabase-pooler` - Connection Pooler (Port 5432)
+
+## Umgebungsvariablen:
+
+Konfiguration in [.env](mdc:.env) Datei.
+
+**Hinweis:** Die lokale Payload-App verbindet sich über localhost:5432 zum Supabase-Pooler.

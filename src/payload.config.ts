@@ -28,7 +28,7 @@ export default buildConfig({
   },
   db: postgresAdapter({
     pool: {
-      connectionString: process.env.DATABASE_URI || '',
+      connectionString: process.env.DATABASE_URI || 'postgresql://postgres.your-tenant-id:your-super-secret-and-long-postgres-password@localhost:5432/postgres',
     },
   }),
   sharp,

@@ -1,0 +1,26 @@
+---
+alwaysApply: true
+description: npm package management and scripts
+---
+
+# npm Package Management
+
+Dieses Projekt verwendet **npm** als Package Manager, nicht pnpm oder yarn.
+
+## Wichtige npm-Befehle:
+
+- `npm install` - Dependencies installieren
+- `npm run dev` - Development Server starten
+- `npm run build` - Production Build erstellen
+- `npm run test` - Tests ausführen
+- `npm run lint` - Code linting
+
+## Package.json Konfiguration:
+
+Die Hauptkonfiguration befindet sich in [package.json](mdc:package.json).
+
+## Docker Integration:
+
+Das Projekt läuft in Docker mit [Dockerfile](mdc:Dockerfile) und [docker-compose.yml](mdc:docker-compose.yml).
+
+**WICHTIG:** Verwende immer `npm` statt `pnpm` oder `yarn` für Package-Management-Befehle.

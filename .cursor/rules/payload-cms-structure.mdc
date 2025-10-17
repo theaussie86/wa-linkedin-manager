@@ -1,0 +1,28 @@
+---
+alwaysApply: true
+description: Payload CMS project structure and configuration
+---
+
+# Payload CMS Projektstruktur
+
+## Hauptkonfiguration:
+
+- [src/payload.config.ts](mdc:src/payload.config.ts) - Payload CMS Hauptkonfiguration
+- [src/collections/](mdc:src/collections/) - Collection-Definitionen (Users.ts, Media.ts)
+- [src/payload-types.ts](mdc:src/payload-types.ts) - Generierte TypeScript-Typen
+
+## Frontend:
+
+- [src/app/(frontend)/](<mdc:src/app/(frontend)/>) - Frontend-Routen
+- [src/app/(payload)/](<mdc:src/app/(payload)/>) - Payload Admin-Interface
+
+## Datenbank:
+
+- Verwendet PostgreSQL mit Supabase
+- Konfiguration in [.env](mdc:.env) mit DATABASE_URI
+- Docker-Setup in [docker-compose.yml](mdc:docker-compose.yml)
+
+## Wichtige Dateien:
+
+- [next.config.mjs](mdc:next.config.mjs) - Next.js Konfiguration
+- [tsconfig.json](mdc:tsconfig.json) - TypeScript Konfiguration

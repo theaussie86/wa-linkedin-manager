@@ -8,48 +8,48 @@
 
 Dieses Dokument definiert die ausführbaren Aufgaben für die Implementierung des Datenmodells für das AI-gestützte LinkedIn Content Management System. Das System nutzt Payload CMS mit PostgreSQL/Supabase als Backend.
 
-**Tech Stack**: Next.js, Payload CMS, PostgreSQL, Supabase, TypeScript  
-**Ziel**: Vollständiges Datenmodell mit 7 Collections und API-Endpoints implementieren
+**Tech Stack**: Next.js, Payload CMS, PostgreSQL, Supabase, TypeScript, n8n (AI-Integration)  
+**Ziel**: Vollständiges Datenmodell mit 6 Collections und API-Endpoints implementieren
 
 ## Phase 1: Setup (Projekt-Initialisierung)
 
 ### T001: Projektstruktur erstellen
 
-- [ ] T001 Erstelle Verzeichnisstruktur für Collections in src/collections/
-- [ ] T002 Erstelle Verzeichnisstruktur für Services in src/services/
-- [ ] T003 Erstelle Verzeichnisstruktur für Utils in src/utils/
-- [ ] T004 Erstelle Verzeichnisstruktur für Types in src/types/
+- [x] T001 Erstelle Verzeichnisstruktur für Collections in src/collections/
+- [x] T002 Erstelle Verzeichnisstruktur für Services in src/services/
+- [x] T003 Erstelle Verzeichnisstruktur für Utils in src/utils/
+- [x] T004 Erstelle Verzeichnisstruktur für Types in src/types/
 
 ### T002: Payload CMS Konfiguration aktualisieren
 
-- [ ] T005 Aktualisiere src/payload.config.ts mit allen Collection-Imports
-- [ ] T006 Konfiguriere Database-Connection für Supabase
-- [ ] T007 Konfiguriere Authentication und Access Control
-- [ ] T008 Konfiguriere Field Validation und Hooks
+- [x] T005 Aktualisiere src/payload.config.ts mit allen Collection-Imports
+- [x] T006 Konfiguriere Database-Connection für Supabase
+- [x] T007 Konfiguriere Authentication und Access Control
+- [x] T008 Konfiguriere Field Validation und Hooks
 
 ### T003: Environment Setup
 
-- [ ] T009 Erstelle .env.example mit allen erforderlichen Variablen
-- [ ] T010 Konfiguriere Supabase Database URL
-- [ ] T011 Konfiguriere Payload Secret Key
-- [ ] T012 Konfiguriere Next.js Server URL
+- [x] T009 Erstelle .env.example mit allen erforderlichen Variablen
+- [x] T010 Konfiguriere Supabase Database URL
+- [x] T011 Konfiguriere Payload Secret Key
+- [x] T012 Konfiguriere Next.js Server URL
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
 ### T004: Media Collection Setup
 
-- [ ] T013 Erstelle Media Collection in src/collections/Media.ts
-- [ ] T014 Konfiguriere File Upload für Images und Videos
-- [ ] T015 Konfiguriere Supabase Storage Integration
-- [ ] T016 Implementiere Image Optimization und Resizing
+- [x] T013 Erstelle Media Collection in src/collections/Media.ts
+- [x] T014 Konfiguriere File Upload für Images und Videos
+- [x] T015 Konfiguriere Supabase Storage Integration
+- [x] T016 Implementiere Image Optimization und Resizing
 
 ### T005: User Collection (Basis für Authentication)
 
-- [ ] T017 [US2] Erstelle User Collection in src/collections/User.ts
-- [ ] T018 [US2] Implementiere Email/Password Authentication
-- [ ] T019 [US2] Implementiere Role-based Access Control
-- [ ] T020 [US2] Implementiere Password Hashing und Validation
-- [ ] T021 [US2] Implementiere User Profile Management
+- [x] T017 [US2] Erstelle User Collection in src/collections/User.ts
+- [x] T018 [US2] Implementiere Email/Password Authentication
+- [x] T019 [US2] Implementiere Role-based Access Control
+- [x] T020 [US2] Implementiere Password Hashing und Validation
+- [x] T021 [US2] Implementiere User Profile Management
 
 ## Phase 3: User Story 1 - Datenstruktur definieren (P1)
 
@@ -87,14 +87,14 @@ Dieses Dokument definiert die ausführbaren Aufgaben für die Implementierung de
 - [ ] T041 [US1] Implementiere Status Transition Validation
 - [ ] T042 [US1] Implementiere AI-spezifische Felder (prompt, model, etc.)
 
-### T009: ContentCalendar Collection
+### T009: Campaign Collection
 
-- [ ] T043 [US1] Erstelle ContentCalendar Collection in src/collections/ContentCalendar.ts
-- [ ] T044 [US1] Implementiere alle ContentCalendar-Felder
+- [ ] T043 [US1] Erstelle Campaign Collection in src/collections/Campaign.ts
+- [ ] T044 [US1] Implementiere alle Campaign-Felder
 - [ ] T045 [US1] Implementiere Company und User Relationships
-- [ ] T046 [US1] Implementiere Many-to-Many Relationship zu GeneratedPost
+- [ ] T046 [US1] Implementiere Many-to-Many Relationships zu GeneratedPost und ReferencePost
 - [ ] T047 [US1] Implementiere Date Range Validation
-- [ ] T048 [US1] Implementiere Enum-Validierung für status und frequency
+- [ ] T048 [US1] Implementiere Enum-Validierung für status und Budget-Validierung
 
 ### T010: PostAnalytics Collection
 
@@ -103,15 +103,6 @@ Dieses Dokument definiert die ausführbaren Aufgaben für die Implementierung de
 - [ ] T051 [US1] Implementiere GeneratedPost Relationship
 - [ ] T052 [US1] Implementiere Enum-Validierung für metricType und period
 - [ ] T053 [US1] Implementiere Date-basierte Aggregation Support
-
-### T011: AITask Collection
-
-- [ ] T054 [US1] Erstelle AITask Collection in src/collections/AITask.ts
-- [ ] T055 [US1] Implementiere alle AITask-Felder
-- [ ] T056 [US1] Implementiere Company Relationship
-- [ ] T057 [US1] Implementiere Enum-Validierung für taskType und status
-- [ ] T058 [US1] Implementiere Retry Logic und Error Handling
-- [ ] T059 [US1] Implementiere JSON-Felder für Input/Output
 
 ## Phase 4: User Story 2 - Benutzer- und Authentifizierungsdaten modellieren (P1)
 
@@ -202,8 +193,7 @@ Dieses Dokument definiert die ausführbaren Aufgaben für die Implementierung de
 - [ ] T094 [P] Implementiere ReferencePost API Endpoints (CRUD)
 - [ ] T095 [P] Implementiere GeneratedPost API Endpoints (CRUD)
 - [ ] T096 [P] Implementiere User API Endpoints (CRUD)
-- [ ] T097 [P] Implementiere ContentCalendar API Endpoints (CRUD)
-- [ ] T098 [P] Implementiere AITask API Endpoints (CRUD)
+- [ ] T097 [P] Implementiere Campaign API Endpoints (CRUD)
 - [ ] T099 [P] Implementiere PostAnalytics API Endpoints (CRUD)
 
 ### T021: API Validation und Error Handling

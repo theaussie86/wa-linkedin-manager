@@ -139,3 +139,5 @@ Als Analyst möchte ich Performance-Daten strukturiert sammeln, damit ich aussag
 - Q: Welcher Validierungsansatz soll für Datenintegrität verwendet werden? → A: Payload CMS Field Validation (validate, hooks, access control)
 - Q: Welche Performance und Skalierbarkeits-Anforderungen sind geplant? → A: Keine spezifischen Performance-Ziele definiert
 - Q: Welches Format soll für die Datenmodell-Dokumentation verwendet werden? → A: Payload CMS Collection Configs (Code-basiert)
+- Q: Wie soll die AITask Collection bei n8n-basierter AI-Integration verwendet werden? → A: AITask Collection komplett entfernen, da n8n alle AI-Operationen verwaltet
+- Q: Welchen Nutzen hat die ContentCalendar Collection für Content-Management? → A: ContentCalendar entfernen und durch Campaign Collection ersetzen für Kampagnen-Gruppierung von Content

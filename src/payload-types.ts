@@ -69,6 +69,11 @@ export interface Config {
   collections: {
     users: User;
     media: Media;
+    companies: Company;
+    'reference-posts': ReferencePost;
+    'generated-posts': GeneratedPost;
+    campaigns: Campaign;
+    'post-analytics': PostAnalytic;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
     'payload-migrations': PayloadMigration;
@@ -77,6 +82,11 @@ export interface Config {
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    companies: CompaniesSelect<false> | CompaniesSelect<true>;
+    'reference-posts': ReferencePostsSelect<false> | ReferencePostsSelect<true>;
+    'generated-posts': GeneratedPostsSelect<false> | GeneratedPostsSelect<true>;
+    campaigns: CampaignsSelect<false> | CampaignsSelect<true>;
+    'post-analytics': PostAnalyticsSelect<false> | PostAnalyticsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
@@ -119,6 +129,43 @@ export interface UserAuthOperations {
  */
 export interface User {
   id: number;
+  firstName: string;
+  lastName: string;
+  role: 'admin' | 'manager' | 'content_creator' | 'reviewer';
+  company?: (number | null) | Company;
+  /**
+   * Spezifische Berechtigungen für den Benutzer (optional)
+   */
+  permissions?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  isActive?: boolean | null;
+  /**
+   * Letzter Login-Zeitpunkt
+   */
+  lastLoginAt?: string | null;
+  /**
+   * UI/Workflow Präferenzen des Benutzers
+   */
+  preferences?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Profilbild des Benutzers
+   */
+  avatar?: (number | null) | Media;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -126,6 +173,8 @@ export interface User {
   resetPasswordExpiration?: string | null;
   salt?: string | null;
   hash?: string | null;
+  _verified?: boolean | null;
+  _verificationToken?: string | null;
   loginAttempts?: number | null;
   lockUntil?: string | null;
   sessions?:
@@ -139,11 +188,85 @@ export interface User {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "companies".
+ */
+export interface Company {
+  id: number;
+  name: string;
+  website?: string | null;
+  linkedinUrl?: string | null;
+  industry?: string | null;
+  size?: ('startup' | 'small' | 'medium' | 'large' | 'enterprise') | null;
+  description?: string | null;
+  logo?: (number | null) | Media;
+  /**
+   * AI-generated business overview
+   */
+  businessOverview?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  /**
+   * AI-generated ideal customer profile
+   */
+  idealCustomerProfile?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  /**
+   * AI-generated value proposition
+   */
+  valueProposition?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  researchStatus?: ('pending' | 'in_progress' | 'completed' | 'failed') | null;
+  lastResearchAt?: string | null;
+  isActive?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "media".
  */
 export interface Media {
   id: number;
   alt: string;
+  caption?: string | null;
   prefix?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -181,7 +304,261 @@ export interface Media {
       filesize?: number | null;
       filename?: string | null;
     };
+    desktop?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
   };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "reference-posts".
+ */
+export interface ReferencePost {
+  id: number;
+  company: number | Company;
+  title?: string | null;
+  content: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  };
+  /**
+   * LinkedIn author name
+   */
+  author?: string | null;
+  /**
+   * LinkedIn profile URL
+   */
+  authorProfile?: string | null;
+  linkedinUrl: string;
+  postType: 'text' | 'image' | 'video' | 'article' | 'poll';
+  category?:
+    | (
+        | 'thought_leadership'
+        | 'industry_insights'
+        | 'company_updates'
+        | 'educational'
+        | 'behind_scenes'
+        | 'case_studies'
+      )
+    | null;
+  tags?:
+    | {
+        tag?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  images?:
+    | {
+        image?: (number | null) | Media;
+        id?: string | null;
+      }[]
+    | null;
+  videoUrl?: string | null;
+  articleUrl?: string | null;
+  likes?: number | null;
+  comments?: number | null;
+  shares?: number | null;
+  /**
+   * Calculated engagement rate (0-100)
+   */
+  engagementRate?: number | null;
+  reach?: number | null;
+  impressions?: number | null;
+  publishedAt: string;
+  /**
+   * When this post was scraped from LinkedIn
+   */
+  scrapedAt?: string | null;
+  isActive?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "generated-posts".
+ */
+export interface GeneratedPost {
+  id: number;
+  company: number | Company;
+  referencePost?: (number | null) | ReferencePost;
+  title: string;
+  content: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  };
+  writingStyle: 'story_based' | 'insight_focused' | 'engagement_focused';
+  category:
+    | 'thought_leadership'
+    | 'industry_insights'
+    | 'company_updates'
+    | 'educational'
+    | 'behind_scenes'
+    | 'case_studies';
+  status?: ('draft' | 'review' | 'approved' | 'scheduled' | 'published' | 'rejected') | null;
+  /**
+   * AI prompt used for generation
+   */
+  aiPrompt?: string | null;
+  /**
+   * AI model used for generation
+   */
+  aiModel?: string | null;
+  /**
+   * When this post was generated by AI
+   */
+  generatedAt?: string | null;
+  /**
+   * User who reviewed this post
+   */
+  reviewedBy?: (number | null) | User;
+  /**
+   * Comments from the reviewer
+   */
+  reviewComments?: string | null;
+  /**
+   * When this post was reviewed
+   */
+  reviewedAt?: string | null;
+  /**
+   * When this post is scheduled to be published
+   */
+  scheduledFor?: string | null;
+  /**
+   * When this post was actually published
+   */
+  publishedAt?: string | null;
+  /**
+   * LinkedIn post ID after publication
+   */
+  linkedinPostId?: string | null;
+  images?:
+    | {
+        image?: (number | null) | Media;
+        id?: string | null;
+      }[]
+    | null;
+  tags?:
+    | {
+        tag?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Performance analytics for this post
+   */
+  performance?: (number | PostAnalytic)[] | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "post-analytics".
+ */
+export interface PostAnalytic {
+  id: number;
+  generatedPost: number | GeneratedPost;
+  metricType: 'likes' | 'comments' | 'shares' | 'views' | 'clicks' | 'engagement_rate' | 'reach' | 'impressions';
+  /**
+   * Metric value (e.g., number of likes, engagement rate percentage)
+   */
+  value: number;
+  /**
+   * Date when this metric was recorded
+   */
+  date: string;
+  period?: ('hourly' | 'daily' | 'weekly' | 'monthly') | null;
+  /**
+   * Source of this metric data
+   */
+  source?: ('linkedin' | 'manual' | 'api') | null;
+  /**
+   * Additional metric data and context
+   */
+  metadata?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "campaigns".
+ */
+export interface Campaign {
+  id: number;
+  company: number | Company;
+  name: string;
+  description?: string | null;
+  startDate: string;
+  endDate: string;
+  status?: ('draft' | 'active' | 'paused' | 'completed' | 'cancelled') | null;
+  /**
+   * Generated posts included in this campaign
+   */
+  generatedPosts?: (number | GeneratedPost)[] | null;
+  /**
+   * Reference posts used for this campaign
+   */
+  referencePosts?: (number | ReferencePost)[] | null;
+  /**
+   * Campaign goals and KPIs
+   */
+  goals?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Target audience for this campaign
+   */
+  targetAudience?: string | null;
+  /**
+   * Campaign budget (optional)
+   */
+  budget?: number | null;
+  /**
+   * User who created this campaign
+   */
+  createdBy: number | User;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -197,6 +574,26 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'media';
         value: number | Media;
+      } | null)
+    | ({
+        relationTo: 'companies';
+        value: number | Company;
+      } | null)
+    | ({
+        relationTo: 'reference-posts';
+        value: number | ReferencePost;
+      } | null)
+    | ({
+        relationTo: 'generated-posts';
+        value: number | GeneratedPost;
+      } | null)
+    | ({
+        relationTo: 'campaigns';
+        value: number | Campaign;
+      } | null)
+    | ({
+        relationTo: 'post-analytics';
+        value: number | PostAnalytic;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -245,6 +642,15 @@ export interface PayloadMigration {
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
+  firstName?: T;
+  lastName?: T;
+  role?: T;
+  company?: T;
+  permissions?: T;
+  isActive?: T;
+  lastLoginAt?: T;
+  preferences?: T;
+  avatar?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
@@ -252,6 +658,8 @@ export interface UsersSelect<T extends boolean = true> {
   resetPasswordExpiration?: T;
   salt?: T;
   hash?: T;
+  _verified?: T;
+  _verificationToken?: T;
   loginAttempts?: T;
   lockUntil?: T;
   sessions?:
@@ -268,6 +676,7 @@ export interface UsersSelect<T extends boolean = true> {
  */
 export interface MediaSelect<T extends boolean = true> {
   alt?: T;
+  caption?: T;
   prefix?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -313,7 +722,149 @@ export interface MediaSelect<T extends boolean = true> {
               filesize?: T;
               filename?: T;
             };
+        desktop?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
       };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "companies_select".
+ */
+export interface CompaniesSelect<T extends boolean = true> {
+  name?: T;
+  website?: T;
+  linkedinUrl?: T;
+  industry?: T;
+  size?: T;
+  description?: T;
+  logo?: T;
+  businessOverview?: T;
+  idealCustomerProfile?: T;
+  valueProposition?: T;
+  researchStatus?: T;
+  lastResearchAt?: T;
+  isActive?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "reference-posts_select".
+ */
+export interface ReferencePostsSelect<T extends boolean = true> {
+  company?: T;
+  title?: T;
+  content?: T;
+  author?: T;
+  authorProfile?: T;
+  linkedinUrl?: T;
+  postType?: T;
+  category?: T;
+  tags?:
+    | T
+    | {
+        tag?: T;
+        id?: T;
+      };
+  images?:
+    | T
+    | {
+        image?: T;
+        id?: T;
+      };
+  videoUrl?: T;
+  articleUrl?: T;
+  likes?: T;
+  comments?: T;
+  shares?: T;
+  engagementRate?: T;
+  reach?: T;
+  impressions?: T;
+  publishedAt?: T;
+  scrapedAt?: T;
+  isActive?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "generated-posts_select".
+ */
+export interface GeneratedPostsSelect<T extends boolean = true> {
+  company?: T;
+  referencePost?: T;
+  title?: T;
+  content?: T;
+  writingStyle?: T;
+  category?: T;
+  status?: T;
+  aiPrompt?: T;
+  aiModel?: T;
+  generatedAt?: T;
+  reviewedBy?: T;
+  reviewComments?: T;
+  reviewedAt?: T;
+  scheduledFor?: T;
+  publishedAt?: T;
+  linkedinPostId?: T;
+  images?:
+    | T
+    | {
+        image?: T;
+        id?: T;
+      };
+  tags?:
+    | T
+    | {
+        tag?: T;
+        id?: T;
+      };
+  performance?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "campaigns_select".
+ */
+export interface CampaignsSelect<T extends boolean = true> {
+  company?: T;
+  name?: T;
+  description?: T;
+  startDate?: T;
+  endDate?: T;
+  status?: T;
+  generatedPosts?: T;
+  referencePosts?: T;
+  goals?: T;
+  targetAudience?: T;
+  budget?: T;
+  createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "post-analytics_select".
+ */
+export interface PostAnalyticsSelect<T extends boolean = true> {
+  generatedPost?: T;
+  metricType?: T;
+  value?: T;
+  date?: T;
+  period?: T;
+  source?: T;
+  metadata?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

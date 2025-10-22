@@ -160,23 +160,24 @@ Das Datenmodell definiert die grundlegenden Entitäten für das AI-gestützte Li
 - Many-to-One zu Company
 - One-to-Many zu GeneratedPost (als Reviewer)
 
-### 5. ContentCalendar Collection
+### 5. Campaign Collection
 
-**Zweck**: Content-Kalender mit Planung und Scheduling
+**Zweck**: Marketing-Kampagnen zur Gruppierung von Content
 
 **Felder**:
 
 - `id`: String (UUID, Primary Key)
 - `company`: Relationship zu Company (Required)
-- `title`: String (Required)
+- `name`: String (Required)
 - `description`: Text (Optional)
 - `startDate`: DateTime (Required)
 - `endDate`: DateTime (Required)
-- `status`: Enum ['planning', 'active', 'paused', 'completed'] (Default: 'planning')
-- `content`: Relationship zu GeneratedPost (Many-to-Many)
-- `goals`: JSON (Optional - Content-Ziele)
+- `status`: Enum ['draft', 'active', 'paused', 'completed', 'cancelled'] (Default: 'draft')
+- `generatedPosts`: Relationship zu GeneratedPost (Many-to-Many)
+- `referencePosts`: Relationship zu ReferencePost (Many-to-Many)
+- `goals`: JSON (Optional - Kampagnen-Ziele und KPIs)
 - `targetAudience`: Text (Optional)
-- `frequency`: Enum ['daily', 'weekly', 'bi_weekly', 'monthly'] (Optional)
+- `budget`: Number (Optional)
 - `createdBy`: Relationship zu User (Required)
 - `createdAt`: DateTime (Auto-generated)
 - `updatedAt`: DateTime (Auto-generated)
@@ -185,12 +186,13 @@ Das Datenmodell definiert die grundlegenden Entitäten für das AI-gestützte Li
 
 - Date Range Validation (endDate > startDate)
 - Status Enum Validation
-- Frequency Enum Validation
+- Budget Number Validation (min: 0)
 
 **Beziehungen**:
 
 - Many-to-One zu Company
 - Many-to-Many zu GeneratedPost
+- Many-to-Many zu ReferencePost
 - Many-to-One zu User (Creator)
 
 ### 6. PostAnalytics Collection
@@ -220,38 +222,6 @@ Das Datenmodell definiert die grundlegenden Entitäten für das AI-gestützte Li
 
 - Many-to-One zu GeneratedPost
 
-### 7. AITask Collection
-
-**Zweck**: AI-Tasks für Content-Generierung und Research
-
-**Felder**:
-
-- `id`: String (UUID, Primary Key)
-- `company`: Relationship zu Company (Required)
-- `taskType`: Enum ['content_generation', 'research', 'image_generation', 'optimization'] (Required)
-- `status`: Enum ['pending', 'in_progress', 'completed', 'failed'] (Default: 'pending')
-- `input`: JSON (Required - Input-Parameter)
-- `output`: JSON (Optional - AI-Output)
-- `aiModel`: String (Optional - verwendetes AI-Model)
-- `prompt`: Text (Optional - verwendeter Prompt)
-- `error`: Text (Optional - Fehlermeldung)
-- `startedAt`: DateTime (Optional)
-- `completedAt`: DateTime (Optional)
-- `retryCount`: Number (Default: 0)
-- `maxRetries`: Number (Default: 3)
-- `createdAt`: DateTime (Auto-generated)
-- `updatedAt`: DateTime (Auto-generated)
-
-**Validierung**:
-
-- Task Type Enum Validation
-- Status Enum Validation
-- Retry Count Validation
-
-**Beziehungen**:
-
-- Many-to-One zu Company
-
 ## Datenbank-Schema
 
 ### Indizes
@@ -264,7 +234,6 @@ Das Datenmodell definiert die grundlegenden Entitäten für das AI-gestützte Li
 - `generated_posts.status` (Index für Status-Queries)
 - `post_analytics.date` (Index für Zeit-basierte Aggregationen)
 - `post_analytics.generated_post_metric_type` (Composite Index)
-- `ai_tasks.status` (Index für Task-Management)
 
 ### Constraints
 

@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+.next/
+out/
+build/
+dist/
+
+# Generated files
+*.tsbuildinfo
+next-env.d.ts
+
+# Coverage
+coverage/
+
+# Logs
+*.log*
+
+# Environment files
+.env*
+
+# Media files
+/media
+
+# Test results
+/test-results/
+/playwright-report/
+/blob-report/
+
+# Supabase project files
+/supabase-project/
+
+# Minified files
+*.min.js
+*.min.css

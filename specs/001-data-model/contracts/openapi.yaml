@@ -1,0 +1,802 @@
+openapi: 3.1.0
+info:
+  title: LinkedIn Content Management System API
+  description: API für AI-gestütztes LinkedIn Content Management System
+  version: 1.0.0
+  contact:
+    name: WA LinkedIn Manager
+    email: support@wa-linkedin-manager.com
+
+servers:
+  - url: https://api.wa-linkedin-manager.com
+    description: Production Server
+  - url: https://staging-api.wa-linkedin-manager.com
+    description: Staging Server
+  - url: http://localhost:3000/api
+    description: Development Server
+
+security:
+  - bearerAuth: []
+
+paths:
+  # Company Management
+  /companies:
+    get:
+      summary: Liste aller Unternehmen
+      tags: [Companies]
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Liste der Unternehmen
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  docs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Company'
+                  totalDocs:
+                    type: integer
+                  limit:
+                    type: integer
+                  page:
+                    type: integer
+                  totalPages:
+                    type: integer
+
+    post:
+      summary: Neues Unternehmen erstellen
+      tags: [Companies]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanyInput'
+      responses:
+        '201':
+          description: Unternehmen erfolgreich erstellt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+        '400':
+          description: Ungültige Eingabedaten
+
+  /companies/{id}:
+    get:
+      summary: Unternehmen abrufen
+      tags: [Companies]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Unternehmen gefunden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+        '404':
+          description: Unternehmen nicht gefunden
+
+    put:
+      summary: Unternehmen aktualisieren
+      tags: [Companies]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanyInput'
+      responses:
+        '200':
+          description: Unternehmen erfolgreich aktualisiert
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Company'
+        '404':
+          description: Unternehmen nicht gefunden
+
+    delete:
+      summary: Unternehmen löschen
+      tags: [Companies]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Unternehmen erfolgreich gelöscht
+        '404':
+          description: Unternehmen nicht gefunden
+
+  # Reference Posts
+  /reference-posts:
+    get:
+      summary: Liste aller Referenz-Posts
+      tags: [Reference Posts]
+      parameters:
+        - name: company
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum:
+              [
+                thought_leadership,
+                industry_insights,
+                company_updates,
+                educational,
+                behind_scenes,
+                case_studies,
+              ]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Liste der Referenz-Posts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  docs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ReferencePost'
+
+    post:
+      summary: Neuen Referenz-Post erstellen
+      tags: [Reference Posts]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReferencePostInput'
+      responses:
+        '201':
+          description: Referenz-Post erfolgreich erstellt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferencePost'
+
+  # Generated Posts
+  /generated-posts:
+    get:
+      summary: Liste aller generierten Posts
+      tags: [Generated Posts]
+      parameters:
+        - name: company
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, review, approved, scheduled, published, rejected]
+        - name: writingStyle
+          in: query
+          schema:
+            type: string
+            enum: [story_based, insight_focused, engagement_focused]
+      responses:
+        '200':
+          description: Liste der generierten Posts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  docs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GeneratedPost'
+
+    post:
+      summary: Neuen generierten Post erstellen
+      tags: [Generated Posts]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GeneratedPostInput'
+      responses:
+        '201':
+          description: Generierter Post erfolgreich erstellt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeneratedPost'
+
+  /generated-posts/{id}/generate:
+    post:
+      summary: AI-Content für Post generieren
+      tags: [Generated Posts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                writingStyle:
+                  type: string
+                  enum: [story_based, insight_focused, engagement_focused]
+                referencePostId:
+                  type: string
+      responses:
+        '200':
+          description: Content erfolgreich generiert
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeneratedPost'
+
+  /generated-posts/{id}/review:
+    post:
+      summary: Post zur Review einreichen
+      tags: [Generated Posts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  enum: [approve, reject, request_changes]
+                comments:
+                  type: string
+      responses:
+        '200':
+          description: Review erfolgreich verarbeitet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeneratedPost'
+
+  # AI Tasks
+  /ai-tasks:
+    get:
+      summary: Liste aller AI-Tasks
+      tags: [AI Tasks]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, in_progress, completed, failed]
+        - name: taskType
+          in: query
+          schema:
+            type: string
+            enum: [content_generation, research, image_generation, optimization]
+      responses:
+        '200':
+          description: Liste der AI-Tasks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  docs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AITask'
+
+  /ai-tasks/{id}/retry:
+    post:
+      summary: AI-Task erneut versuchen
+      tags: [AI Tasks]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task erfolgreich neu gestartet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AITask'
+
+  # Analytics
+  /analytics/posts/{id}:
+    get:
+      summary: Post-Analytics abrufen
+      tags: [Analytics]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [hourly, daily, weekly, monthly]
+            default: daily
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Analytics-Daten
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  postId:
+                    type: string
+                  metrics:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PostAnalytics'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Company:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        website:
+          type: string
+          format: uri
+        linkedinUrl:
+          type: string
+          format: uri
+        industry:
+          type: string
+        size:
+          type: string
+          enum: [startup, small, medium, large, enterprise]
+        description:
+          type: string
+        logo:
+          type: string
+          format: uri
+        businessOverview:
+          type: string
+        idealCustomerProfile:
+          type: string
+        valueProposition:
+          type: string
+        researchStatus:
+          type: string
+          enum: [pending, in_progress, completed, failed]
+        lastResearchAt:
+          type: string
+          format: date-time
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CompanyInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        website:
+          type: string
+          format: uri
+        linkedinUrl:
+          type: string
+          format: uri
+        industry:
+          type: string
+        size:
+          type: string
+          enum: [startup, small, medium, large, enterprise]
+        description:
+          type: string
+
+    ReferencePost:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        company:
+          type: string
+          format: uuid
+        title:
+          type: string
+        content:
+          type: string
+        author:
+          type: string
+        authorProfile:
+          type: string
+          format: uri
+        linkedinUrl:
+          type: string
+          format: uri
+        postType:
+          type: string
+          enum: [text, image, video, article, poll]
+        category:
+          type: string
+          enum:
+            [
+              thought_leadership,
+              industry_insights,
+              company_updates,
+              educational,
+              behind_scenes,
+              case_studies,
+            ]
+        tags:
+          type: array
+          items:
+            type: string
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+        videoUrl:
+          type: string
+          format: uri
+        articleUrl:
+          type: string
+          format: uri
+        likes:
+          type: integer
+        comments:
+          type: integer
+        shares:
+          type: integer
+        engagementRate:
+          type: number
+        reach:
+          type: integer
+        impressions:
+          type: integer
+        publishedAt:
+          type: string
+          format: date-time
+        scrapedAt:
+          type: string
+          format: date-time
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ReferencePostInput:
+      type: object
+      required: [company, content, linkedinUrl, postType, publishedAt]
+      properties:
+        company:
+          type: string
+          format: uuid
+        title:
+          type: string
+        content:
+          type: string
+        author:
+          type: string
+        authorProfile:
+          type: string
+          format: uri
+        linkedinUrl:
+          type: string
+          format: uri
+        postType:
+          type: string
+          enum: [text, image, video, article, poll]
+        category:
+          type: string
+          enum:
+            [
+              thought_leadership,
+              industry_insights,
+              company_updates,
+              educational,
+              behind_scenes,
+              case_studies,
+            ]
+        tags:
+          type: array
+          items:
+            type: string
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+        videoUrl:
+          type: string
+          format: uri
+        articleUrl:
+          type: string
+          format: uri
+        likes:
+          type: integer
+        comments:
+          type: integer
+        shares:
+          type: integer
+        reach:
+          type: integer
+        impressions:
+          type: integer
+        publishedAt:
+          type: string
+          format: date-time
+
+    GeneratedPost:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        company:
+          type: string
+          format: uuid
+        referencePost:
+          type: string
+          format: uuid
+        title:
+          type: string
+        content:
+          type: string
+        writingStyle:
+          type: string
+          enum: [story_based, insight_focused, engagement_focused]
+        category:
+          type: string
+          enum:
+            [
+              thought_leadership,
+              industry_insights,
+              company_updates,
+              educational,
+              behind_scenes,
+              case_studies,
+            ]
+        status:
+          type: string
+          enum: [draft, review, approved, scheduled, published, rejected]
+        aiPrompt:
+          type: string
+        aiModel:
+          type: string
+        generatedAt:
+          type: string
+          format: date-time
+        reviewedBy:
+          type: string
+          format: uuid
+        reviewComments:
+          type: string
+        reviewedAt:
+          type: string
+          format: date-time
+        scheduledFor:
+          type: string
+          format: date-time
+        publishedAt:
+          type: string
+          format: date-time
+        linkedinPostId:
+          type: string
+        images:
+          type: array
+          items:
+            type: string
+            format: uri
+        tags:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    GeneratedPostInput:
+      type: object
+      required: [company, title, content, writingStyle, category]
+      properties:
+        company:
+          type: string
+          format: uuid
+        referencePost:
+          type: string
+          format: uuid
+        title:
+          type: string
+        content:
+          type: string
+        writingStyle:
+          type: string
+          enum: [story_based, insight_focused, engagement_focused]
+        category:
+          type: string
+          enum:
+            [
+              thought_leadership,
+              industry_insights,
+              company_updates,
+              educational,
+              behind_scenes,
+              case_studies,
+            ]
+        tags:
+          type: array
+          items:
+            type: string
+        scheduledFor:
+          type: string
+          format: date-time
+
+    AITask:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        company:
+          type: string
+          format: uuid
+        taskType:
+          type: string
+          enum: [content_generation, research, image_generation, optimization]
+        status:
+          type: string
+          enum: [pending, in_progress, completed, failed]
+        input:
+          type: object
+        output:
+          type: object
+        aiModel:
+          type: string
+        prompt:
+          type: string
+        error:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        retryCount:
+          type: integer
+        maxRetries:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PostAnalytics:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        generatedPost:
+          type: string
+          format: uuid
+        metricType:
+          type: string
+          enum: [likes, comments, shares, views, clicks, engagement_rate, reach, impressions]
+        value:
+          type: number
+        date:
+          type: string
+          format: date-time
+        period:
+          type: string
+          enum: [hourly, daily, weekly, monthly]
+        source:
+          type: string
+        metadata:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+tags:
+  - name: Companies
+    description: Unternehmensverwaltung
+  - name: Reference Posts
+    description: Referenz-Post-Sammlung
+  - name: Generated Posts
+    description: AI-generierte Posts
+  - name: AI Tasks
+    description: AI-Task-Management
+  - name: Analytics
+    description: Performance-Analytics

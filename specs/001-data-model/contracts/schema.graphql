@@ -1,0 +1,413 @@
+# LinkedIn Content Management System - GraphQL Schema
+
+scalar DateTime
+scalar JSON
+
+type Query {
+  # Company Queries
+  companies(limit: Int, page: Int, search: String): CompanyConnection
+  company(id: ID!): Company
+
+  # Reference Post Queries
+  referencePosts(company: ID, category: PostCategory, limit: Int): [ReferencePost!]!
+  referencePost(id: ID!): ReferencePost
+
+  # Generated Post Queries
+  generatedPosts(
+    company: ID
+    status: PostStatus
+    writingStyle: WritingStyle
+    limit: Int
+  ): [GeneratedPost!]!
+  generatedPost(id: ID!): GeneratedPost
+
+  # AI Task Queries
+  aiTasks(status: TaskStatus, taskType: TaskType): [AITask!]!
+  aiTask(id: ID!): AITask
+
+  # Analytics Queries
+  postAnalytics(
+    postId: ID!
+    period: AnalyticsPeriod
+    startDate: DateTime
+    endDate: DateTime
+  ): [PostAnalytics!]!
+
+  # User Queries
+  me: User
+  users(company: ID, role: UserRole): [User!]!
+}
+
+type Mutation {
+  # Company Mutations
+  createCompany(input: CompanyInput!): Company!
+  updateCompany(id: ID!, input: CompanyInput!): Company!
+  deleteCompany(id: ID!): Boolean!
+
+  # Reference Post Mutations
+  createReferencePost(input: ReferencePostInput!): ReferencePost!
+  updateReferencePost(id: ID!, input: ReferencePostInput!): ReferencePost!
+  deleteReferencePost(id: ID!): Boolean!
+
+  # Generated Post Mutations
+  createGeneratedPost(input: GeneratedPostInput!): GeneratedPost!
+  updateGeneratedPost(id: ID!, input: GeneratedPostInput!): GeneratedPost!
+  deleteGeneratedPost(id: ID!): Boolean!
+
+  # AI Content Generation
+  generateContent(postId: ID!, input: ContentGenerationInput!): GeneratedPost!
+  reviewPost(postId: ID!, input: PostReviewInput!): GeneratedPost!
+
+  # AI Task Mutations
+  retryAITask(id: ID!): AITask!
+
+  # User Mutations
+  createUser(input: UserInput!): User!
+  updateUser(id: ID!, input: UserInput!): User!
+  deleteUser(id: ID!): Boolean!
+}
+
+# Company Types
+type Company {
+  id: ID!
+  name: String!
+  website: String
+  linkedinUrl: String
+  industry: String
+  size: CompanySize
+  description: String
+  logo: String
+  businessOverview: String
+  idealCustomerProfile: String
+  valueProposition: String
+  researchStatus: ResearchStatus!
+  lastResearchAt: DateTime
+  isActive: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+
+  # Relationships
+  referencePosts: [ReferencePost!]!
+  generatedPosts: [GeneratedPost!]!
+  users: [User!]!
+  contentCalendars: [ContentCalendar!]!
+}
+
+input CompanyInput {
+  name: String!
+  website: String
+  linkedinUrl: String
+  industry: String
+  size: CompanySize
+  description: String
+  logo: String
+}
+
+enum CompanySize {
+  STARTUP
+  SMALL
+  MEDIUM
+  LARGE
+  ENTERPRISE
+}
+
+enum ResearchStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+# Reference Post Types
+type ReferencePost {
+  id: ID!
+  company: Company!
+  title: String
+  content: String!
+  author: String
+  authorProfile: String
+  linkedinUrl: String!
+  postType: PostType!
+  category: PostCategory
+  tags: [String!]!
+  images: [String!]!
+  videoUrl: String
+  articleUrl: String
+  likes: Int!
+  comments: Int!
+  shares: Int!
+  engagementRate: Float
+  reach: Int
+  impressions: Int
+  publishedAt: DateTime!
+  scrapedAt: DateTime!
+  isActive: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+
+  # Relationships
+  generatedPosts: [GeneratedPost!]!
+}
+
+input ReferencePostInput {
+  company: ID!
+  title: String
+  content: String!
+  author: String
+  authorProfile: String
+  linkedinUrl: String!
+  postType: PostType!
+  category: PostCategory
+  tags: [String!]
+  images: [String!]
+  videoUrl: String
+  articleUrl: String
+  likes: Int
+  comments: Int
+  shares: Int
+  reach: Int
+  impressions: Int
+  publishedAt: DateTime!
+}
+
+enum PostType {
+  TEXT
+  IMAGE
+  VIDEO
+  ARTICLE
+  POLL
+}
+
+enum PostCategory {
+  THOUGHT_LEADERSHIP
+  INDUSTRY_INSIGHTS
+  COMPANY_UPDATES
+  EDUCATIONAL
+  BEHIND_SCENES
+  CASE_STUDIES
+}
+
+# Generated Post Types
+type GeneratedPost {
+  id: ID!
+  company: Company!
+  referencePost: ReferencePost
+  title: String!
+  content: String!
+  writingStyle: WritingStyle!
+  category: PostCategory!
+  status: PostStatus!
+  aiPrompt: String
+  aiModel: String
+  generatedAt: DateTime
+  reviewedBy: User
+  reviewComments: String
+  reviewedAt: DateTime
+  scheduledFor: DateTime
+  publishedAt: DateTime
+  linkedinPostId: String
+  images: [String!]!
+  tags: [String!]!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+
+  # Relationships
+  performance: [PostAnalytics!]!
+}
+
+input GeneratedPostInput {
+  company: ID!
+  referencePost: ID
+  title: String!
+  content: String!
+  writingStyle: WritingStyle!
+  category: PostCategory!
+  tags: [String!]
+  scheduledFor: DateTime
+}
+
+input ContentGenerationInput {
+  writingStyle: WritingStyle!
+  referencePostId: ID
+}
+
+input PostReviewInput {
+  action: ReviewAction!
+  comments: String
+}
+
+enum WritingStyle {
+  STORY_BASED
+  INSIGHT_FOCUSED
+  ENGAGEMENT_FOCUSED
+}
+
+enum PostStatus {
+  DRAFT
+  REVIEW
+  APPROVED
+  SCHEDULED
+  PUBLISHED
+  REJECTED
+}
+
+enum ReviewAction {
+  APPROVE
+  REJECT
+  REQUEST_CHANGES
+}
+
+# User Types
+type User {
+  id: ID!
+  email: String!
+  firstName: String!
+  lastName: String!
+  role: UserRole!
+  company: Company
+  permissions: JSON
+  isActive: Boolean!
+  lastLoginAt: DateTime
+  preferences: JSON
+  createdAt: DateTime!
+  updatedAt: DateTime!
+
+  # Relationships
+  reviewedPosts: [GeneratedPost!]!
+}
+
+input UserInput {
+  email: String!
+  password: String!
+  firstName: String!
+  lastName: String!
+  role: UserRole!
+  company: ID
+  permissions: JSON
+  preferences: JSON
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  CONTENT_CREATOR
+  REVIEWER
+}
+
+# Content Calendar Types
+type ContentCalendar {
+  id: ID!
+  company: Company!
+  title: String!
+  description: String
+  startDate: DateTime!
+  endDate: DateTime!
+  status: CalendarStatus!
+  content: [GeneratedPost!]!
+  goals: JSON
+  targetAudience: String
+  frequency: PostFrequency
+  createdBy: User!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum CalendarStatus {
+  PLANNING
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+enum PostFrequency {
+  DAILY
+  WEEKLY
+  BI_WEEKLY
+  MONTHLY
+}
+
+# AI Task Types
+type AITask {
+  id: ID!
+  company: Company!
+  taskType: TaskType!
+  status: TaskStatus!
+  input: JSON!
+  output: JSON
+  aiModel: String
+  prompt: String
+  error: String
+  startedAt: DateTime
+  completedAt: DateTime
+  retryCount: Int!
+  maxRetries: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum TaskType {
+  CONTENT_GENERATION
+  RESEARCH
+  IMAGE_GENERATION
+  OPTIMIZATION
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+# Analytics Types
+type PostAnalytics {
+  id: ID!
+  generatedPost: GeneratedPost!
+  metricType: MetricType!
+  value: Float!
+  date: DateTime!
+  period: AnalyticsPeriod!
+  source: String
+  metadata: JSON
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum MetricType {
+  LIKES
+  COMMENTS
+  SHARES
+  VIEWS
+  CLICKS
+  ENGAGEMENT_RATE
+  REACH
+  IMPRESSIONS
+}
+
+enum AnalyticsPeriod {
+  HOURLY
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+# Connection Types
+type CompanyConnection {
+  docs: [Company!]!
+  totalDocs: Int!
+  limit: Int!
+  page: Int!
+  totalPages: Int!
+}
+
+# Subscription Types (für Real-time Updates)
+type Subscription {
+  # AI Task Updates
+  aiTaskUpdated(companyId: ID): AITask!
+
+  # Generated Post Updates
+  generatedPostUpdated(companyId: ID): GeneratedPost!
+
+  # Analytics Updates
+  analyticsUpdated(postId: ID!): PostAnalytics!
+}

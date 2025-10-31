@@ -112,18 +112,18 @@ Dieses Dokument definiert die ausführbaren Aufgaben für die Implementierung de
 
 ### T012: User Collection Erweiterung
 
-- [ ] T060 [US2] Erweitere User Collection um Company Relationship
-- [ ] T061 [US2] Implementiere Permissions JSON-Feld
-- [ ] T062 [US2] Implementiere Preferences JSON-Feld
-- [ ] T063 [US2] Implementiere Last Login Tracking
-- [ ] T064 [US2] Implementiere User Status Management
+- [x] T060 [US2] Erweitere User Collection um Company Relationship
+- [x] T061 [US2] Implementiere Permissions JSON-Feld
+- [x] T062 [US2] Implementiere Preferences JSON-Feld
+- [x] T063 [US2] Implementiere Last Login Tracking
+- [x] T064 [US2] Implementiere User Status Management
 
 ### T013: Authentication Hooks
 
-- [ ] T065 [US2] Implementiere Before Validate Hook für Password Hashing
-- [ ] T066 [US2] Implementiere Before Change Hook für Email Validation
-- [ ] T067 [US2] Implementiere After Change Hook für Login Tracking
-- [ ] T068 [US2] Implementiere Access Control für User-spezifische Daten
+- [x] T065 [US2] Implementiere Before Validate Hook für Password Hashing
+- [x] T066 [US2] Implementiere Before Change Hook für Email Validation
+- [x] T067 [US2] Implementiere After Change Hook für Login Tracking
+- [x] T068 [US2] Implementiere Access Control für User-spezifische Daten
 
 ## Phase 5: User Story 3 - LinkedIn-Datenstrukturen vorbereiten (P2)
 

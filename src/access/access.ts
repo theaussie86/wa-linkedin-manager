@@ -22,6 +22,34 @@ export const isAdminOrUser: Access = ({ req: { user } }) => {
   return true // This will be further filtered in the query
 }
 
+// Helper function to check if user can access a specific user's data
+export const canAccessUser: Access = ({ req: { user }, id }) => {
+  if (!user) return false
+
+  // Admin can access all users
+  if ((user as User).role === 'admin') return true
+
+  // Manager can access users from their company
+  if ((user as User).role === 'manager') {
+    // This will be filtered by company relationship in queries
+    return true
+  }
+
+  // Users can only access their own data
+  return user.id === id
+}
+
+// Helper function for user-specific field access
+export const isAdminOrSelf: Access = ({ req: { user }, id }) => {
+  if (!user) return false
+
+  // Admin can access all
+  if ((user as User).role === 'admin') return true
+
+  // Users can only access their own data
+  return user.id === id
+}
+
 // Helper function to check if user is active
 export const isActiveUser: Access = ({ req: { user } }) => {
   return Boolean(user && (user as User).isActive !== false)

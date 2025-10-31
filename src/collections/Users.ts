@@ -1,5 +1,5 @@
 import type { CollectionConfig } from 'payload'
-import { isAdmin, isAdminOrUser } from '../access/access'
+import { isAdmin, canAccessUser } from '../access/access'
 import type { User } from '../payload-types'
 
 export const Users: CollectionConfig = {
@@ -16,8 +16,8 @@ export const Users: CollectionConfig = {
   },
   access: {
     create: isAdmin,
-    read: isAdminOrUser,
-    update: isAdminOrUser,
+    read: canAccessUser,
+    update: canAccessUser,
     delete: isAdmin,
   },
   fields: [
@@ -80,6 +80,11 @@ export const Users: CollectionConfig = {
         description: 'Spezifische Berechtigungen für den Benutzer (optional)',
       },
       access: {
+        read: ({ req: { user }, id }) => {
+          if (!user) return false
+          if ((user as User).role === 'admin') return true
+          return user.id === id
+        },
         update: ({ req: { user } }) => Boolean(user && (user as User).role === 'admin'),
       },
     },
@@ -106,6 +111,18 @@ export const Users: CollectionConfig = {
       admin: {
         description: 'UI/Workflow Präferenzen des Benutzers',
       },
+      access: {
+        read: ({ req: { user }, id }) => {
+          if (!user) return false
+          if ((user as User).role === 'admin') return true
+          return user.id === id
+        },
+        update: ({ req: { user }, id }) => {
+          if (!user) return false
+          if ((user as User).role === 'admin') return true
+          return user.id === id
+        },
+      },
     },
     {
       name: 'avatar',
@@ -119,23 +136,55 @@ export const Users: CollectionConfig = {
   hooks: {
     beforeValidate: [
       ({ data }) => {
-        // Ensure email is lowercase
+        // Ensure email is lowercase and validate format
         if (data?.email) {
           data.email = data.email.toLowerCase().trim()
+
+          // Validate email format
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+          if (!emailRegex.test(data.email)) {
+            throw new Error('Invalid email format')
+          }
         }
+
+        // Validate password strength if provided
+        if (data?.password) {
+          const password = data.password
+
+          // Password length validation
+          if (password.length < 8) {
+            throw new Error('Password must be at least 8 characters long')
+          }
+
+          // Password strength validation: at least one uppercase, lowercase, number, and special character
+          const hasUpperCase = /[A-Z]/.test(password)
+          const hasLowerCase = /[a-z]/.test(password)
+          const hasNumber = /[0-9]/.test(password)
+          const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password)
+
+          if (!hasUpperCase || !hasLowerCase || !hasNumber || !hasSpecialChar) {
+            throw new Error(
+              'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character',
+            )
+          }
+        }
+
         return data
       },
     ],
     beforeChange: [
-      ({ data }) => {
-        // Hash password if provided
-        if (data?.password) {
-          // Password will be automatically hashed by Payload
-          // But we can add additional validation here
-          if (data.password.length < 8) {
-            throw new Error('Password must be at least 8 characters long')
+      ({ data, operation }) => {
+        // Email validation on change (for updates)
+        if (data?.email && operation === 'update') {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+          if (!emailRegex.test(data.email.toLowerCase().trim())) {
+            throw new Error('Invalid email format')
           }
         }
+
+        // Password will be automatically hashed by Payload
+        // Additional validation is handled in beforeValidate hook
+
         return data
       },
     ],

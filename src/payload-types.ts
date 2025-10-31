@@ -557,6 +557,7 @@ export interface Campaign {
    * User who created this campaign
    */
   createdBy: number | User;
+  isActive?: boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -848,6 +849,7 @@ export interface CampaignsSelect<T extends boolean = true> {
   targetAudience?: T;
   budget?: T;
   createdBy?: T;
+  isActive?: T;
   updatedAt?: T;
   createdAt?: T;
 }

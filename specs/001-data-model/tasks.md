@@ -199,17 +199,17 @@ Dieses Dokument definiert die ausführbaren Aufgaben für die Implementierung de
 
 ### T016: Content Management Features
 
-- [ ] T077 [US4] Implementiere Content Categorization Logic
-- [ ] T078 [US4] Implementiere Content Tagging System
-- [ ] T079 [US4] Implementiere Content Search und Filtering
-- [ ] T080 [US4] Implementiere Content Status Workflow
+- [x] T077 [US4] Implementiere Content Categorization Logic
+- [x] T078 [US4] Implementiere Content Tagging System
+- [x] T079 [US4] Implementiere Content Search und Filtering
+- [x] T080 [US4] Implementiere Content Status Workflow
 
 ### T017: Content Relationships
 
-- [ ] T081 [US4] Implementiere Content-Company Relationships
-- [ ] T082 [US4] Implementiere Content-User Relationships
-- [ ] T083 [US4] Implementiere Content-Calendar Relationships
-- [ ] T084 [US4] Implementiere Content-Analytics Relationships
+- [x] T081 [US4] Implementiere Content-Company Relationships
+- [x] T082 [US4] Implementiere Content-User Relationships
+- [x] T083 [US4] Implementiere Content-Calendar Relationships
+- [x] T084 [US4] Implementiere Content-Analytics Relationships
 
 ## Phase 7: User Story 5 - Analytics und Reporting Daten modellieren (P3)
 

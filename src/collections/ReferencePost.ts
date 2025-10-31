@@ -1,4 +1,4 @@
-import { CollectionConfig } from 'payload/types'
+import type { CollectionConfig } from 'payload'
 
 export const ReferencePost: CollectionConfig = {
   slug: 'reference-posts',
@@ -10,10 +10,22 @@ export const ReferencePost: CollectionConfig = {
     read: ({ req: { user } }) => {
       if (user?.role === 'admin') return true
       if (user?.role === 'manager') return true
+      if (!user?.company) {
+        return false // User has no company assigned
+      }
       return {
-        company: {
-          equals: user?.company,
-        },
+        and: [
+          {
+            company: {
+              equals: typeof user.company === 'string' ? user.company : user.company.id,
+            },
+          },
+          {
+            isActive: {
+              equals: true,
+            },
+          },
+        ],
       }
     },
     create: ({ req: { user } }) => {
@@ -22,9 +34,12 @@ export const ReferencePost: CollectionConfig = {
     update: ({ req: { user } }) => {
       if (user?.role === 'admin') return true
       if (user?.role === 'manager') return true
+      if (!user?.company) {
+        return false // User has no company assigned
+      }
       return {
         company: {
-          equals: user?.company,
+          equals: typeof user.company === 'string' ? user.company : user.company.id,
         },
       }
     },
@@ -206,6 +221,32 @@ export const ReferencePost: CollectionConfig = {
   ],
   timestamps: true,
   hooks: {
+    beforeValidate: [
+      ({ data, operation }) => {
+        // Normalize URLs
+        if (data?.linkedinUrl) {
+          data.linkedinUrl = data.linkedinUrl.trim()
+        }
+        if (data?.authorProfile) {
+          data.authorProfile = data.authorProfile.trim()
+        }
+        if (data?.videoUrl) {
+          data.videoUrl = data.videoUrl.trim()
+        }
+        if (data?.articleUrl) {
+          data.articleUrl = data.articleUrl.trim()
+        }
+        // Set scrapedAt on create if not provided
+        if (operation === 'create' && !data?.scrapedAt) {
+          data.scrapedAt = new Date().toISOString()
+        }
+        // Ensure isActive defaults to true on create
+        if (operation === 'create' && data?.isActive === undefined) {
+          data.isActive = true
+        }
+        return data
+      },
+    ],
     beforeChange: [
       ({ data }) => {
         // Calculate engagement rate if not provided
@@ -215,6 +256,22 @@ export const ReferencePost: CollectionConfig = {
           data.engagementRate = Math.round((totalEngagement / reach) * 100)
         }
         return data
+      },
+    ],
+    afterChange: [
+      ({ doc, req, operation }) => {
+        // Log reference post creation/update
+        if (operation === 'create') {
+          req.payload.logger.info(`New reference post created: ${doc.linkedinUrl} (${doc.id})`)
+        } else if (operation === 'update') {
+          req.payload.logger.info(`Reference post updated: ${doc.linkedinUrl} (${doc.id})`)
+        }
+      },
+    ],
+    beforeDelete: [
+      async ({ id, req }) => {
+        // Soft delete: Log deletion request
+        req.payload.logger.warn(`Soft delete requested for reference post ${id} - use update to set isActive=false instead`)
       },
     ],
   },

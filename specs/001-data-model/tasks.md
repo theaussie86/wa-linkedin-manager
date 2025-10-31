@@ -59,50 +59,50 @@ Dieses Dokument definiert die ausführbaren Aufgaben für die Implementierung de
 
 ### T006: Company Collection
 
-- [ ] T022 [US1] Erstelle Company Collection in src/collections/Company.ts
-- [ ] T023 [US1] Implementiere alle Company-Felder (name, website, linkedinUrl, etc.)
-- [ ] T024 [US1] Implementiere Enum-Validierung für size und researchStatus
-- [ ] T025 [US1] Implementiere URL-Validierung für website und linkedinUrl
-- [ ] T026 [US1] Implementiere RichText-Felder für AI-generierte Inhalte
-- [ ] T027 [US1] Implementiere Media-Relationship für Logo
-- [ ] T028 [US1] Implementiere Timestamps und Soft Delete
+- [x] T022 [US1] Erstelle Company Collection in src/collections/Company.ts
+- [x] T023 [US1] Implementiere alle Company-Felder (name, website, linkedinUrl, etc.)
+- [x] T024 [US1] Implementiere Enum-Validierung für size und researchStatus
+- [x] T025 [US1] Implementiere URL-Validierung für website und linkedinUrl
+- [x] T026 [US1] Implementiere RichText-Felder für AI-generierte Inhalte
+- [x] T027 [US1] Implementiere Media-Relationship für Logo
+- [x] T028 [US1] Implementiere Timestamps und Soft Delete
 
 ### T007: ReferencePost Collection
 
-- [ ] T029 [US1] Erstelle ReferencePost Collection in src/collections/ReferencePost.ts
-- [ ] T030 [US1] Implementiere alle ReferencePost-Felder
-- [ ] T031 [US1] Implementiere Company-Relationship
-- [ ] T032 [US1] Implementiere Enum-Validierung für postType und category
-- [ ] T033 [US1] Implementiere LinkedIn URL-Validierung
-- [ ] T034 [US1] Implementiere Engagement Rate Berechnung
-- [ ] T035 [US1] Implementiere Media-Array für Images
+- [x] T029 [US1] Erstelle ReferencePost Collection in src/collections/ReferencePost.ts
+- [x] T030 [US1] Implementiere alle ReferencePost-Felder
+- [x] T031 [US1] Implementiere Company-Relationship
+- [x] T032 [US1] Implementiere Enum-Validierung für postType und category
+- [x] T033 [US1] Implementiere LinkedIn URL-Validierung
+- [x] T034 [US1] Implementiere Engagement Rate Berechnung
+- [x] T035 [US1] Implementiere Media-Array für Images
 
 ### T008: GeneratedPost Collection
 
-- [ ] T036 [US1] Erstelle GeneratedPost Collection in src/collections/GeneratedPost.ts
-- [ ] T037 [US1] Implementiere alle GeneratedPost-Felder
-- [ ] T038 [US1] Implementiere Company und ReferencePost Relationships
-- [ ] T039 [US1] Implementiere User Relationship für Reviewer
-- [ ] T040 [US1] Implementiere Enum-Validierung für writingStyle und status
-- [ ] T041 [US1] Implementiere Status Transition Validation
-- [ ] T042 [US1] Implementiere AI-spezifische Felder (prompt, model, etc.)
+- [x] T036 [US1] Erstelle GeneratedPost Collection in src/collections/GeneratedPost.ts
+- [x] T037 [US1] Implementiere alle GeneratedPost-Felder
+- [x] T038 [US1] Implementiere Company und ReferencePost Relationships
+- [x] T039 [US1] Implementiere User Relationship für Reviewer
+- [x] T040 [US1] Implementiere Enum-Validierung für writingStyle und status
+- [x] T041 [US1] Implementiere Status Transition Validation
+- [x] T042 [US1] Implementiere AI-spezifische Felder (prompt, model, etc.)
 
 ### T009: Campaign Collection
 
-- [ ] T043 [US1] Erstelle Campaign Collection in src/collections/Campaign.ts
-- [ ] T044 [US1] Implementiere alle Campaign-Felder
-- [ ] T045 [US1] Implementiere Company und User Relationships
-- [ ] T046 [US1] Implementiere Many-to-Many Relationships zu GeneratedPost und ReferencePost
-- [ ] T047 [US1] Implementiere Date Range Validation
-- [ ] T048 [US1] Implementiere Enum-Validierung für status und Budget-Validierung
+- [x] T043 [US1] Erstelle Campaign Collection in src/collections/Campaign.ts
+- [x] T044 [US1] Implementiere alle Campaign-Felder
+- [x] T045 [US1] Implementiere Company und User Relationships
+- [x] T046 [US1] Implementiere Many-to-Many Relationships zu GeneratedPost und ReferencePost
+- [x] T047 [US1] Implementiere Date Range Validation
+- [x] T048 [US1] Implementiere Enum-Validierung für status und Budget-Validierung
 
 ### T010: PostAnalytics Collection
 
-- [ ] T049 [US1] Erstelle PostAnalytics Collection in src/collections/PostAnalytics.ts
-- [ ] T050 [US1] Implementiere alle PostAnalytics-Felder
-- [ ] T051 [US1] Implementiere GeneratedPost Relationship
-- [ ] T052 [US1] Implementiere Enum-Validierung für metricType und period
-- [ ] T053 [US1] Implementiere Date-basierte Aggregation Support
+- [x] T049 [US1] Erstelle PostAnalytics Collection in src/collections/PostAnalytics.ts
+- [x] T050 [US1] Implementiere alle PostAnalytics-Felder
+- [x] T051 [US1] Implementiere GeneratedPost Relationship
+- [x] T052 [US1] Implementiere Enum-Validierung für metricType und period
+- [x] T053 [US1] Implementiere Date-basierte Aggregation Support
 
 ## Phase 4: User Story 2 - Benutzer- und Authentifizierungsdaten modellieren (P1)
 

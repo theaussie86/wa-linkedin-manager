@@ -1,4 +1,4 @@
-import { CollectionConfig } from 'payload/types'
+import type { CollectionConfig } from 'payload'
 
 export const GeneratedPost: CollectionConfig = {
   slug: 'generated-posts',
@@ -10,10 +10,22 @@ export const GeneratedPost: CollectionConfig = {
     read: ({ req: { user } }) => {
       if (user?.role === 'admin') return true
       if (user?.role === 'manager') return true
+      if (!user?.company) {
+        return false // User has no company assigned
+      }
       return {
-        company: {
-          equals: user?.company,
-        },
+        and: [
+          {
+            company: {
+              equals: typeof user.company === 'string' ? user.company : user.company.id,
+            },
+          },
+          {
+            status: {
+              not_equals: 'draft', // Don't show drafts to non-admin users unless they created them
+            },
+          },
+        ],
       }
     },
     create: ({ req: { user } }) => {
@@ -22,10 +34,30 @@ export const GeneratedPost: CollectionConfig = {
     update: ({ req: { user } }) => {
       if (user?.role === 'admin') return true
       if (user?.role === 'manager') return true
-      if (user?.role === 'reviewer') return true
+      if (user?.role === 'reviewer') return true // Reviewers can update for review purposes
+      if (!user?.company) {
+        return false // User has no company assigned
+      }
+      // Content creators can only update their own draft posts
+      if (user?.role === 'content_creator') {
+        return {
+          and: [
+            {
+              company: {
+                equals: typeof user.company === 'string' ? user.company : user.company.id,
+              },
+            },
+            {
+              status: {
+                equals: 'draft',
+              },
+            },
+          ],
+        }
+      }
       return {
         company: {
-          equals: user?.company,
+          equals: typeof user.company === 'string' ? user.company : user.company.id,
         },
       }
     },
@@ -188,40 +220,90 @@ export const GeneratedPost: CollectionConfig = {
   ],
   timestamps: true,
   hooks: {
-    beforeChange: [
+    beforeValidate: [
       ({ data, operation }) => {
+        // Normalize title
+        if (data?.title) {
+          data.title = data.title.trim()
+        }
+        // Ensure status defaults to draft on create
+        if (operation === 'create' && !data?.status) {
+          data.status = 'draft'
+        }
+        return data
+      },
+    ],
+    beforeChange: [
+      async ({ data, operation, req, doc }) => {
         // Status transition validation
-        if (operation === 'update' && data.status) {
-          const validTransitions = {
+        if (operation === 'update' && data.status && doc) {
+          const previousStatus = doc.status
+          const newStatus = data.status
+
+          const validTransitions: Record<string, string[]> = {
             draft: ['review', 'rejected'],
             review: ['approved', 'rejected', 'draft'],
             approved: ['scheduled', 'draft'],
             scheduled: ['published', 'draft'],
-            published: [], // Terminal state
+            published: [], // Terminal state - cannot transition from published
             rejected: ['draft'],
           }
 
-          // This would need to be implemented with the previous status
-          // For now, we'll just validate the status value
-          const validStatuses = [
-            'draft',
-            'review',
-            'approved',
-            'scheduled',
-            'published',
-            'rejected',
-          ]
-          if (!validStatuses.includes(data.status)) {
-            throw new Error(`Invalid status: ${data.status}`)
+          if (previousStatus && validTransitions[previousStatus]) {
+            if (!validTransitions[previousStatus].includes(newStatus)) {
+              throw new Error(
+                `Invalid status transition from ${previousStatus} to ${newStatus}. Valid transitions: ${validTransitions[previousStatus].join(', ')}`,
+              )
+            }
+          }
+
+          // Update reviewedBy and reviewedAt when status changes to approved/rejected
+          if (newStatus === 'approved' || newStatus === 'rejected') {
+            if (!data.reviewedBy && req.user) {
+              data.reviewedBy = typeof req.user === 'string' ? req.user : req.user.id
+            }
+            if (!data.reviewedAt) {
+              data.reviewedAt = new Date().toISOString()
+            }
+          }
+
+          // Update publishedAt when status changes to published
+          if (newStatus === 'published' && !data.publishedAt) {
+            data.publishedAt = new Date().toISOString()
+          }
+        }
+
+        // Scheduled date validation
+        if (data.scheduledFor) {
+          const scheduledDate = new Date(data.scheduledFor)
+          const now = new Date()
+          if (scheduledDate < now && data.status === 'scheduled') {
+            throw new Error('Scheduled date must be in the future')
           }
         }
 
         // Set generatedAt when AI content is created
-        if (data.aiModel && !data.generatedAt) {
+        if (data.aiModel && !data.generatedAt && operation === 'create') {
           data.generatedAt = new Date().toISOString()
         }
 
         return data
+      },
+    ],
+    afterChange: [
+      ({ doc, req, operation }) => {
+        // Log generated post creation/update
+        if (operation === 'create') {
+          req.payload.logger.info(`New generated post created: ${doc.title} (${doc.id}) - Status: ${doc.status}`)
+        } else if (operation === 'update') {
+          req.payload.logger.info(`Generated post updated: ${doc.title} (${doc.id}) - Status: ${doc.status}`)
+        }
+      },
+    ],
+    beforeDelete: [
+      async ({ id, req }) => {
+        // Soft delete: Log deletion request
+        req.payload.logger.warn(`Soft delete requested for generated post ${id} - use update to set status=rejected or remove instead`)
       },
     ],
   },

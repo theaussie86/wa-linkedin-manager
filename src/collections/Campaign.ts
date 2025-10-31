@@ -7,29 +7,36 @@ export const Campaign: CollectionConfig = {
     defaultColumns: ['name', 'company', 'status', 'startDate', 'endDate', 'createdBy'],
   },
   access: {
-    read: ({ req: { user } }: { req: { user?: any } }) => {
+    read: ({ req: { user } }) => {
       if (user?.role === 'admin') return true
       if (user?.role === 'manager') return true
+      if (!user?.company) {
+        return false // User has no company assigned
+      }
       return {
         company: {
-          equals: user?.company,
+          equals: typeof user.company === 'string' ? user.company : user.company.id,
         },
       }
     },
-    create: ({ req: { user } }: { req: { user?: any } }) => {
+    create: ({ req: { user } }) => {
       return user?.role === 'admin' || user?.role === 'manager' || user?.role === 'content_creator'
     },
-    update: ({ req: { user } }: { req: { user?: any } }) => {
+    update: ({ req: { user } }) => {
       if (user?.role === 'admin') return true
       if (user?.role === 'manager') return true
+      if (!user?.company) {
+        return false // User has no company assigned
+      }
       return {
         company: {
-          equals: user?.company,
+          equals: typeof user.company === 'string' ? user.company : user.company.id,
         },
       }
     },
-    delete: ({ req: { user } }: { req: { user?: any } }) => {
-      return user?.role === 'admin' || user?.role === 'manager'
+    delete: ({ req: { user } }) => {
+      // Soft delete: Only admins can hard delete
+      return user?.role === 'admin'
     },
   },
   fields: [
@@ -43,7 +50,7 @@ export const Campaign: CollectionConfig = {
       name: 'name',
       type: 'text',
       required: true,
-      validate: (val: any) => {
+      validate: (val) => {
         if (!val || val.length < 2) {
           return 'Campaign name must be at least 2 characters long'
         }
@@ -63,7 +70,7 @@ export const Campaign: CollectionConfig = {
       name: 'endDate',
       type: 'date',
       required: true,
-      validate: (val: any, { siblingData }: { siblingData: any }) => {
+      validate: (val, { siblingData }) => {
         if (val && siblingData.startDate && new Date(val) <= new Date(siblingData.startDate)) {
           return 'End date must be after start date'
         }
@@ -127,15 +134,41 @@ export const Campaign: CollectionConfig = {
       type: 'relationship',
       relationTo: 'users',
       required: true,
+      defaultValue: ({ user }) => {
+        // Auto-set createdBy to current user on create
+        return user?.id
+      },
       admin: {
         description: 'User who created this campaign',
       },
     },
+    {
+      name: 'isActive',
+      type: 'checkbox',
+      defaultValue: true,
+    },
   ],
   timestamps: true,
   hooks: {
+    beforeValidate: [
+      ({ data, operation }) => {
+        // Normalize name
+        if (data?.name) {
+          data.name = data.name.trim()
+        }
+        // Ensure status defaults to draft on create
+        if (operation === 'create' && !data?.status) {
+          data.status = 'draft'
+        }
+        // Ensure isActive defaults to true on create
+        if (operation === 'create' && data?.isActive === undefined) {
+          data.isActive = true
+        }
+        return data
+      },
+    ],
     beforeChange: [
-      ({ data }: { data: any }) => {
+      ({ data, operation, req }) => {
         // Validate date range
         if (data.startDate && data.endDate) {
           const startDate = new Date(data.startDate)
@@ -151,7 +184,28 @@ export const Campaign: CollectionConfig = {
           throw new Error('Budget cannot be negative')
         }
 
+        // Auto-set createdBy if not provided and operation is create
+        if (operation === 'create' && !data.createdBy && req.user) {
+          data.createdBy = typeof req.user === 'string' ? req.user : req.user.id
+        }
+
         return data
+      },
+    ],
+    afterChange: [
+      ({ doc, req, operation }) => {
+        // Log campaign creation/update
+        if (operation === 'create') {
+          req.payload.logger.info(`New campaign created: ${doc.name} (${doc.id}) - Status: ${doc.status}`)
+        } else if (operation === 'update') {
+          req.payload.logger.info(`Campaign updated: ${doc.name} (${doc.id}) - Status: ${doc.status}`)
+        }
+      },
+    ],
+    beforeDelete: [
+      async ({ id, req }) => {
+        // Soft delete: Log deletion request
+        req.payload.logger.warn(`Soft delete requested for campaign ${id} - use update to set isActive=false instead`)
       },
     ],
   },

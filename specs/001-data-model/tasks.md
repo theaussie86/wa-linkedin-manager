@@ -270,10 +270,10 @@ Dieses Dokument definiert die ausführbaren Aufgaben für die Implementierung de
 
 ### T024: Unit Tests
 
-- [ ] T113 [P] Erstelle Unit Tests für alle Collections
-- [ ] T114 [P] Erstelle Unit Tests für alle Services
-- [ ] T115 [P] Erstelle Unit Tests für alle Utilities
-- [ ] T116 [P] Erstelle Unit Tests für alle Validators
+- [x] T113 [P] Erstelle Unit Tests für alle Collections
+- [x] T114 [P] Erstelle Unit Tests für alle Services
+- [x] T115 [P] Erstelle Unit Tests für alle Utilities
+- [x] T116 [P] Erstelle Unit Tests für alle Validators
 
 ### T025: Integration Tests
 

@@ -277,10 +277,10 @@ Dieses Dokument definiert die ausführbaren Aufgaben für die Implementierung de
 
 ### T025: Integration Tests
 
-- [ ] T117 Erstelle Integration Tests für API Endpoints
-- [ ] T118 Erstelle Integration Tests für Database Operations
-- [ ] T119 Erstelle Integration Tests für Authentication
-- [ ] T120 Erstelle Integration Tests für File Upload
+- [x] T117 Erstelle Integration Tests für API Endpoints
+- [x] T118 Erstelle Integration Tests für Database Operations
+- [x] T119 Erstelle Integration Tests für Authentication
+- [x] T120 Erstelle Integration Tests für File Upload
 
 ### T026: End-to-End Tests
 

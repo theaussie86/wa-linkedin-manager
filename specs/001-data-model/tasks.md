@@ -293,17 +293,17 @@ Dieses Dokument definiert die ausführbaren Aufgaben für die Implementierung de
 
 ### T027: Documentation
 
-- [ ] T125 Erstelle API Documentation
-- [ ] T126 Erstelle Database Schema Documentation
-- [ ] T127 Erstelle Collection Configuration Documentation
-- [ ] T128 Erstelle Deployment Guide
+- [x] T125 Erstelle API Documentation
+- [x] T126 Erstelle Database Schema Documentation
+- [x] T127 Erstelle Collection Configuration Documentation
+- [x] T128 Erstelle Deployment Guide
 
 ### T028: Production Setup
 
-- [ ] T129 Konfiguriere Production Environment
-- [ ] T130 Konfiguriere Production Database
-- [ ] T131 Konfiguriere Production File Storage
-- [ ] T132 Konfiguriere Production Monitoring
+- [x] T129 Konfiguriere Production Environment
+- [x] T130 Konfiguriere Production Database
+- [x] T131 Konfiguriere Production File Storage
+- [x] T132 Konfiguriere Production Monitoring
 
 ## Dependencies
 

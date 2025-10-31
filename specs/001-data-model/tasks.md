@@ -235,19 +235,19 @@ Dieses Dokument definiert die ausführbaren Aufgaben für die Implementierung de
 
 ### T020: REST API Endpoints
 
-- [ ] T093 [P] Implementiere Company API Endpoints (CRUD)
-- [ ] T094 [P] Implementiere ReferencePost API Endpoints (CRUD)
-- [ ] T095 [P] Implementiere GeneratedPost API Endpoints (CRUD)
-- [ ] T096 [P] Implementiere User API Endpoints (CRUD)
-- [ ] T097 [P] Implementiere Campaign API Endpoints (CRUD)
-- [ ] T099 [P] Implementiere PostAnalytics API Endpoints (CRUD)
+- [x] T093 [P] Implementiere Company API Endpoints (CRUD)
+- [x] T094 [P] Implementiere ReferencePost API Endpoints (CRUD)
+- [x] T095 [P] Implementiere GeneratedPost API Endpoints (CRUD)
+- [x] T096 [P] Implementiere User API Endpoints (CRUD)
+- [x] T097 [P] Implementiere Campaign API Endpoints (CRUD)
+- [x] T099 [P] Implementiere PostAnalytics API Endpoints (CRUD)
 
 ### T021: API Validation und Error Handling
 
-- [ ] T100 Implementiere Request Validation Middleware
-- [ ] T101 Implementiere Error Response Standardization
-- [ ] T102 Implementiere API Rate Limiting
-- [ ] T103 Implementiere API Documentation (OpenAPI)
+- [x] T100 Implementiere Request Validation Middleware
+- [x] T101 Implementiere Error Response Standardization
+- [x] T102 Implementiere API Rate Limiting
+- [x] T103 Implementiere API Documentation (OpenAPI)
 
 ## Phase 9: Database Optimization
 

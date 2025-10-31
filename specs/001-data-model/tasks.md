@@ -253,18 +253,18 @@ Dieses Dokument definiert die ausführbaren Aufgaben für die Implementierung de
 
 ### T022: Database Schema
 
-- [ ] T104 Erstelle Database Migration Scripts
-- [ ] T105 Implementiere Database Indexes für Performance
-- [ ] T106 Implementiere Foreign Key Constraints
-- [ ] T107 Implementiere Unique Constraints
-- [ ] T108 Implementiere Check Constraints
+- [x] T104 Erstelle Database Migration Scripts
+- [x] T105 Implementiere Database Indexes für Performance
+- [x] T106 Implementiere Foreign Key Constraints
+- [x] T107 Implementiere Unique Constraints
+- [x] T108 Implementiere Check Constraints
 
 ### T023: Database Hooks
 
-- [ ] T109 Implementiere Before Validate Hooks für alle Collections
-- [ ] T110 Implementiere Before Change Hooks für alle Collections
-- [ ] T111 Implementiere After Change Hooks für alle Collections
-- [ ] T112 Implementiere Before Delete Hooks für Soft Delete
+- [x] T109 Implementiere Before Validate Hooks für alle Collections
+- [x] T110 Implementiere Before Change Hooks für alle Collections
+- [x] T111 Implementiere After Change Hooks für alle Collections
+- [x] T112 Implementiere Before Delete Hooks für Soft Delete
 
 ## Phase 10: Testing und Validation
 

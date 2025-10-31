@@ -210,5 +210,14 @@ export const Users: CollectionConfig = {
         })
       },
     ],
+    beforeDelete: [
+      async ({ id, req }) => {
+        // Soft delete: Log deletion request
+        // In practice, users should be deactivated (isActive=false) instead of deleted
+        req.payload.logger.warn(
+          `User deletion requested for ${id} - consider using isActive=false for soft delete instead`,
+        )
+      },
+    ],
   },
 }

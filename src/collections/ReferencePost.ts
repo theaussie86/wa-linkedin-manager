@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { linkedinPostUrlValidator, linkedinPostIdValidator, linkedinAuthorProfileValidator } from '../utils/linkedin'
 
 export const ReferencePost: CollectionConfig = {
   slug: 'reference-posts',
@@ -73,12 +74,7 @@ export const ReferencePost: CollectionConfig = {
     {
       name: 'authorProfile',
       type: 'text',
-      validate: (val) => {
-        if (val && !val.match(/^https:\/\/www\.linkedin\.com\/in\/.+/)) {
-          return 'Please enter a valid LinkedIn profile URL (e.g., https://www.linkedin.com/in/username)'
-        }
-        return true
-      },
+      validate: linkedinAuthorProfileValidator,
       admin: {
         description: 'LinkedIn profile URL',
       },
@@ -88,11 +84,28 @@ export const ReferencePost: CollectionConfig = {
       type: 'text',
       required: true,
       unique: true,
-      validate: (val) => {
-        if (!val.match(/^https:\/\/www\.linkedin\.com\/posts\/.+/)) {
-          return 'Please enter a valid LinkedIn post URL (e.g., https://www.linkedin.com/posts/username-activity-1234567890)'
-        }
-        return true
+      validate: linkedinPostUrlValidator,
+    },
+    {
+      name: 'linkedinPostId',
+      type: 'text',
+      validate: linkedinPostIdValidator,
+      admin: {
+        description: 'LinkedIn Post ID (numeric, for future API integration)',
+      },
+    },
+    {
+      name: 'linkedinAuthorId',
+      type: 'text',
+      admin: {
+        description: 'LinkedIn Author ID (for future API integration)',
+      },
+    },
+    {
+      name: 'linkedinCompanyPageId',
+      type: 'text',
+      admin: {
+        description: 'LinkedIn Company Page ID (for future API integration)',
       },
     },
     {

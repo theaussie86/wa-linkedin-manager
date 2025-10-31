@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { linkedinPostIdValidator, linkedinPostUrlValidator } from '../utils/linkedin'
 
 export const GeneratedPost: CollectionConfig = {
   slug: 'generated-posts',
@@ -183,8 +184,24 @@ export const GeneratedPost: CollectionConfig = {
     {
       name: 'linkedinPostId',
       type: 'text',
+      validate: linkedinPostIdValidator,
       admin: {
-        description: 'LinkedIn post ID after publication',
+        description: 'LinkedIn Post ID (numeric, set after publication)',
+      },
+    },
+    {
+      name: 'linkedinPublicationUrl',
+      type: 'text',
+      validate: linkedinPostUrlValidator,
+      admin: {
+        description: 'Full LinkedIn post URL after publication',
+      },
+    },
+    {
+      name: 'linkedinPublicationDate',
+      type: 'date',
+      admin: {
+        description: 'Date when the post was published on LinkedIn',
       },
     },
     {
@@ -270,6 +287,11 @@ export const GeneratedPost: CollectionConfig = {
           // Update publishedAt when status changes to published
           if (newStatus === 'published' && !data.publishedAt) {
             data.publishedAt = new Date().toISOString()
+          }
+
+          // Update linkedinPublicationDate when status changes to published
+          if (newStatus === 'published' && !data.linkedinPublicationDate) {
+            data.linkedinPublicationDate = new Date().toISOString()
           }
         }
 

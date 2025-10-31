@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { linkedinCompanyUrlValidator } from '../utils/linkedin'
 
 export const Company: CollectionConfig = {
   slug: 'companies',
@@ -82,11 +83,29 @@ export const Company: CollectionConfig = {
       name: 'linkedinUrl',
       type: 'text',
       unique: true,
-      validate: (val) => {
-        if (val && !val.match(/^https:\/\/www\.linkedin\.com\/company\/.+/)) {
-          return 'Please enter a valid LinkedIn company URL (e.g., https://www.linkedin.com/company/example)'
-        }
-        return true
+      validate: linkedinCompanyUrlValidator,
+    },
+    {
+      name: 'linkedinCompanyId',
+      type: 'text',
+      admin: {
+        description: 'LinkedIn Company ID (for future API integration)',
+      },
+    },
+    {
+      name: 'linkedinFollowerCount',
+      type: 'number',
+      min: 0,
+      admin: {
+        description: 'Number of LinkedIn followers (for future API integration)',
+      },
+    },
+    {
+      name: 'linkedinPageUrl',
+      type: 'text',
+      validate: linkedinCompanyUrlValidator,
+      admin: {
+        description: 'LinkedIn Page URL (validated company URL for future API integration)',
       },
     },
     {

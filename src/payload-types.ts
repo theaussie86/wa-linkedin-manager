@@ -195,6 +195,18 @@ export interface Company {
   name: string;
   website?: string | null;
   linkedinUrl?: string | null;
+  /**
+   * LinkedIn Company ID (for future API integration)
+   */
+  linkedinCompanyId?: string | null;
+  /**
+   * Number of LinkedIn followers (for future API integration)
+   */
+  linkedinFollowerCount?: number | null;
+  /**
+   * LinkedIn Page URL (validated company URL for future API integration)
+   */
+  linkedinPageUrl?: string | null;
   industry?: string | null;
   size?: ('startup' | 'small' | 'medium' | 'large' | 'enterprise') | null;
   description?: string | null;
@@ -346,6 +358,18 @@ export interface ReferencePost {
    */
   authorProfile?: string | null;
   linkedinUrl: string;
+  /**
+   * LinkedIn Post ID (numeric, for future API integration)
+   */
+  linkedinPostId?: string | null;
+  /**
+   * LinkedIn Author ID (for future API integration)
+   */
+  linkedinAuthorId?: string | null;
+  /**
+   * LinkedIn Company Page ID (for future API integration)
+   */
+  linkedinCompanyPageId?: string | null;
   postType: 'text' | 'image' | 'video' | 'article' | 'poll';
   category?:
     | (
@@ -455,9 +479,17 @@ export interface GeneratedPost {
    */
   publishedAt?: string | null;
   /**
-   * LinkedIn post ID after publication
+   * LinkedIn Post ID (numeric, set after publication)
    */
   linkedinPostId?: string | null;
+  /**
+   * Full LinkedIn post URL after publication
+   */
+  linkedinPublicationUrl?: string | null;
+  /**
+   * Date when the post was published on LinkedIn
+   */
+  linkedinPublicationDate?: string | null;
   images?:
     | {
         image?: (number | null) | Media;
@@ -743,6 +775,9 @@ export interface CompaniesSelect<T extends boolean = true> {
   name?: T;
   website?: T;
   linkedinUrl?: T;
+  linkedinCompanyId?: T;
+  linkedinFollowerCount?: T;
+  linkedinPageUrl?: T;
   industry?: T;
   size?: T;
   description?: T;
@@ -767,6 +802,9 @@ export interface ReferencePostsSelect<T extends boolean = true> {
   author?: T;
   authorProfile?: T;
   linkedinUrl?: T;
+  linkedinPostId?: T;
+  linkedinAuthorId?: T;
+  linkedinCompanyPageId?: T;
   postType?: T;
   category?: T;
   tags?:
@@ -816,6 +854,8 @@ export interface GeneratedPostsSelect<T extends boolean = true> {
   scheduledFor?: T;
   publishedAt?: T;
   linkedinPostId?: T;
+  linkedinPublicationUrl?: T;
+  linkedinPublicationDate?: T;
   images?:
     | T
     | {

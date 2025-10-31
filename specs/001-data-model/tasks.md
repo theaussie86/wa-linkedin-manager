@@ -133,17 +133,63 @@ Dieses Dokument definiert die ausführbaren Aufgaben für die Implementierung de
 
 ### T014: LinkedIn-spezifische Validierung
 
-- [ ] T069 [US3] Implementiere LinkedIn URL Format Validation
-- [ ] T070 [US3] Implementiere LinkedIn Post ID Validation
-- [ ] T071 [US3] Implementiere LinkedIn Author Profile Validation
-- [ ] T072 [US3] Erstelle LinkedIn-spezifische Utility Functions
+- [x] T069 [US3] Implementiere LinkedIn URL Format Validation
+  - Erstelle `src/utils/linkedin/url-validator.ts`
+  - Validierung für `linkedin.com/company/*`, `linkedin.com/in/*`, `linkedin.com/posts/*`
+  - Regex-basierte Validierung mit TypeScript Types
+  - Integration in Payload CMS Field Validation
+- [x] T070 [US3] Implementiere LinkedIn Post ID Validation
+  - Erstelle `src/utils/linkedin/post-id-validator.ts`
+  - Validierung: Rein numerisch (Format: z.B. "1234567890") - basierend auf Klärung
+  - TypeScript Validator Function für Payload CMS
+  - Unit Tests mit verschiedenen Post ID Formaten
+- [x] T071 [US3] Implementiere LinkedIn Author Profile Validation
+  - Erstelle `src/utils/linkedin/author-profile-validator.ts`
+  - Validierung für `linkedin.com/in/*` Format
+  - Integration mit ReferencePost `authorProfile` Feld
+  - Error Messages für ungültige Profile URLs
+- [x] T072 [US3] Erstelle LinkedIn-spezifische Utility Functions
+  - Erstelle `src/utils/linkedin/index.ts` als Barrel Export
+  - Wiederverwendbare Helper-Funktionen
+  - TypeScript Interfaces für LinkedIn-Datenstrukturen
+  - Dokumentation aller Utility Functions
 
 ### T015: LinkedIn Data Preparation
 
-- [ ] T073 [US3] Implementiere LinkedIn-spezifische Felder in Company
-- [ ] T074 [US3] Implementiere LinkedIn-spezifische Felder in ReferencePost
-- [ ] T075 [US3] Implementiere LinkedIn-spezifische Felder in GeneratedPost
-- [ ] T076 [US3] Erstelle LinkedIn Data Mapping Utilities
+- [x] T073 [US3] Implementiere LinkedIn-spezifische Felder in Company
+  - Erweitere `src/collections/Company.ts`
+  - Neue Felder (basierend auf Klärung):
+    - `linkedinCompanyId`: String (Optional) - LinkedIn Company ID
+    - `linkedinFollowerCount`: Number (Optional) - Anzahl Follower
+    - `linkedinPageUrl`: String (Optional) - LinkedIn Page URL (validiert mit T069)
+  - Alle Felder optional (für zukünftige Integration)
+  - Integration in bestehende Company Collection
+- [x] T074 [US3] Implementiere LinkedIn-spezifische Felder in ReferencePost
+  - Erweitere `src/collections/ReferencePost.ts`
+  - Neue Felder:
+    - `linkedinPostId`: String (Optional) - Numerische LinkedIn Post ID (validiert mit T070)
+    - `linkedinAuthorId`: String (Optional) - LinkedIn Author ID
+    - `linkedinCompanyPageId`: String (Optional) - LinkedIn Company Page ID
+  - Validierung mit LinkedIn Post ID Validator (T070)
+  - Integration in bestehende ReferencePost Collection
+- [x] T075 [US3] Implementiere LinkedIn-spezifische Felder in GeneratedPost
+  - Erweitere `src/collections/GeneratedPost.ts`
+  - Neue Felder:
+    - `linkedinPostId`: String (Optional) - Nach Veröffentlichung gesetzt (validiert mit T070)
+    - `linkedinPublicationUrl`: String (Optional) - Vollständige LinkedIn URL (validiert mit T069)
+    - `linkedinPublicationDate`: DateTime (Optional) - Veröffentlichungsdatum
+  - Integration mit bestehendem `linkedinPostId` Feld (falls vorhanden)
+  - Validierung mit LinkedIn Post ID Validator (T070) und URL Validator (T069)
+- [x] T076 [US3] Erstelle LinkedIn Data Mapping Utilities
+  - Erstelle `src/services/linkedin/mapping.ts`
+  - Helper-Funktionen für Daten-Transformation (basierend auf Klärung):
+    - `normalizeLinkedInCompanyData(apiData)`: Normalisiert LinkedIn Company API Response
+    - `normalizeLinkedInPostData(apiData)`: Normalisiert LinkedIn Post API Response
+    - `validateLinkedInData(data)`: Validierung vor Mapping
+    - `convertToInternalFormat(apiData, targetCollection)`: Konvertierung zu internem Format
+  - TypeScript Interfaces für LinkedIn API Responses
+  - Error Handling für unvollständige Daten
+  - Unit Tests für alle Mapping-Funktionen
 
 ## Phase 6: User Story 4 - Content-Management Daten strukturieren (P2)
 

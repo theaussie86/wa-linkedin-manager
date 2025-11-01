@@ -224,3 +224,21 @@ export function linkedinPostUrlValidator(value: string | null | undefined): true
   return 'Please enter a valid LinkedIn post URL (e.g., https://www.linkedin.com/posts/username-activity-1234567890)'
 }
 
+/**
+ * Payload CMS field validator for LinkedIn company or profile URLs
+ * Accepts both company URLs (/company/...) and profile URLs (/in/...)
+ * 
+ * @param value - The value to validate
+ * @returns true if valid, error message string if invalid
+ */
+export function linkedinCompanyOrProfileUrlValidator(value: string | null | undefined): true | string {
+  if (!value) {
+    return true // Optional field
+  }
+  const result = validateLinkedInUrl(value)
+  if (result.isValid && (result.urlType === 'company' || result.urlType === 'profile')) {
+    return true
+  }
+  return 'Please enter a valid LinkedIn company or profile URL (e.g., https://www.linkedin.com/company/example or https://www.linkedin.com/in/username)'
+}
+

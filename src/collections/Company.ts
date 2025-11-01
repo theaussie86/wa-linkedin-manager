@@ -1,5 +1,6 @@
 import type { CollectionConfig } from 'payload'
-import { linkedinCompanyUrlValidator } from '../utils/linkedin'
+import { linkedinCompanyOrProfileUrlValidator } from '../utils/linkedin'
+import { triggerCompanyResearch } from '../services/n8n/webhook-client'
 
 export const Company: CollectionConfig = {
   slug: 'companies',
@@ -83,7 +84,7 @@ export const Company: CollectionConfig = {
       name: 'linkedinUrl',
       type: 'text',
       unique: true,
-      validate: linkedinCompanyUrlValidator,
+      validate: linkedinCompanyOrProfileUrlValidator,
     },
     {
       name: 'linkedinCompanyId',
@@ -103,9 +104,10 @@ export const Company: CollectionConfig = {
     {
       name: 'linkedinPageUrl',
       type: 'text',
-      validate: linkedinCompanyUrlValidator,
+      validate: linkedinCompanyOrProfileUrlValidator,
       admin: {
-        description: 'LinkedIn Page URL (validated company URL for future API integration)',
+        description:
+          'LinkedIn Page URL (validated company or profile URL for future API integration)',
       },
     },
     {
@@ -177,7 +179,7 @@ export const Company: CollectionConfig = {
   timestamps: true,
   hooks: {
     beforeValidate: [
-      ({ data }) => {
+      ({ data, operation, doc }) => {
         // Ensure LinkedIn URL is normalized
         if (data?.linkedinUrl) {
           data.linkedinUrl = data.linkedinUrl.trim()
@@ -190,6 +192,28 @@ export const Company: CollectionConfig = {
         if (data?.name) {
           data.name = data.name.trim()
         }
+
+        // Status Transition Validation for researchStatus
+        if (operation === 'update' && data?.researchStatus && doc) {
+          const previousStatus = doc.researchStatus
+          const newStatus = data.researchStatus
+
+          const validTransitions: Record<string, string[]> = {
+            pending: ['in_progress'],
+            in_progress: ['completed', 'failed'],
+            completed: [], // Terminal state - cannot transition from completed
+            failed: ['pending'], // Can retry by setting back to pending
+          }
+
+          if (previousStatus && validTransitions[previousStatus]) {
+            if (!validTransitions[previousStatus].includes(newStatus)) {
+              throw new Error(
+                `Invalid research status transition from ${previousStatus} to ${newStatus}. Valid transitions: ${validTransitions[previousStatus].join(', ')}`,
+              )
+            }
+          }
+        }
+
         return data
       },
     ],
@@ -207,12 +231,32 @@ export const Company: CollectionConfig = {
       },
     ],
     afterChange: [
-      ({ doc, req, operation }) => {
+      async ({ doc, req, operation }) => {
         // Log company creation/update
         if (operation === 'create') {
           req.payload.logger.info(`New company created: ${doc.name} (${doc.id})`)
         } else if (operation === 'update') {
           req.payload.logger.info(`Company updated: ${doc.name} (${doc.id})`)
+          req.payload.logger.info(`Research status: ${doc.researchStatus}`)
+
+          // Trigger n8n Research Workflow when researchStatus is 'pending' on update
+          // Condition: researchStatus === 'pending' AND operation === 'update'
+          if (doc.researchStatus === 'pending') {
+            // Blocking execution: wait for response and handle errors
+            try {
+              await triggerCompanyResearch(String(doc.id), req.payload)
+              req.payload.logger.info(
+                `Successfully triggered company research webhook for company ${doc.id}`,
+              )
+            } catch (error) {
+              req.payload.logger.error(
+                `Failed to trigger company research webhook for company ${doc.id}`,
+                { error, companyId: doc.id },
+              )
+              // Re-throw error so it's visible to the user
+              throw error
+            }
+          }
         }
       },
     ],
@@ -221,7 +265,9 @@ export const Company: CollectionConfig = {
         // Soft delete: Instead of hard delete, set isActive to false
         // Note: In Payload CMS, we prevent deletion and recommend using update instead
         // This is handled via access control - admins can "delete" via update to set isActive=false
-        req.payload.logger.warn(`Soft delete requested for company ${id} - use update to set isActive=false instead`)
+        req.payload.logger.warn(
+          `Soft delete requested for company ${id} - use update to set isActive=false instead`,
+        )
         // Allow deletion but log it (actual soft delete should be done via update operation)
       },
     ],

@@ -204,7 +204,7 @@ export interface Company {
    */
   linkedinFollowerCount?: number | null;
   /**
-   * LinkedIn Page URL (validated company URL for future API integration)
+   * LinkedIn Page URL (validated company or profile URL for future API integration)
    */
   linkedinPageUrl?: string | null;
   industry?: string | null;

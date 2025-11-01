@@ -18,6 +18,7 @@ export {
   linkedinCompanyUrlValidator,
   linkedinProfileUrlValidator,
   linkedinPostUrlValidator,
+  linkedinCompanyOrProfileUrlValidator,
   type LinkedInUrlType,
   type LinkedInUrlValidationResult,
 } from './url-validator'

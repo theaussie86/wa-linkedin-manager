@@ -1,5 +1,6 @@
 import type { CollectionConfig } from 'payload'
 import { linkedinPostIdValidator, linkedinPostUrlValidator } from '../utils/linkedin'
+import { triggerContentGeneration } from '../services/n8n/webhook-client'
 
 export const GeneratedPost: CollectionConfig = {
   slug: 'generated-posts',
@@ -313,12 +314,48 @@ export const GeneratedPost: CollectionConfig = {
       },
     ],
     afterChange: [
-      ({ doc, req, operation }) => {
+      async ({ doc, req, operation }) => {
         // Log generated post creation/update
         if (operation === 'create') {
           req.payload.logger.info(`New generated post created: ${doc.title} (${doc.id}) - Status: ${doc.status}`)
         } else if (operation === 'update') {
           req.payload.logger.info(`Generated post updated: ${doc.title} (${doc.id}) - Status: ${doc.status}`)
+
+          // Trigger n8n Content Generation Workflow when status is 'draft' and content is empty
+          // Condition: status === 'draft' AND content is empty AND operation === 'update'
+          if (doc.status === 'draft' && operation === 'update') {
+            // Check if content is empty
+            const isContentEmpty = 
+              !doc.content ||
+              !doc.content.root ||
+              !doc.content.root.children ||
+              doc.content.root.children.length === 0 ||
+              doc.content.root.children.every((child: any) => {
+                // Check if paragraph/list/heading nodes are empty
+                if (child.type === 'paragraph' || child.type === 'heading') {
+                  return !child.children || child.children.length === 0 || 
+                    child.children.every((c: any) => !c.text || c.text.trim() === '')
+                }
+                if (child.type === 'list') {
+                  return !child.children || child.children.length === 0
+                }
+                return true
+              })
+
+            if (isContentEmpty) {
+              // Optional: Check for manual trigger flag (generateImage from request data)
+              // For now, default to generateImage: false
+              const generateImage = false
+
+              // Async execution: fire-and-forget, non-blocking
+              triggerContentGeneration(String(doc.id), generateImage, req.payload).catch((error) => {
+                req.payload.logger.error(
+                  `Failed to trigger content generation webhook for post ${doc.id}`,
+                  { error, generatedPostId: doc.id, generateImage },
+                )
+              })
+            }
+          }
         }
       },
     ],

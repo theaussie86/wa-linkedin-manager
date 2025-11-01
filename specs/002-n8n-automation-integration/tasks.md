@@ -15,30 +15,28 @@ Dieses Dokument definiert die ausführbaren Aufgaben für die Implementierung de
 
 ### T001: Projektstruktur erstellen
 
-- [ ] T001 Erstelle Verzeichnisstruktur für Master-Webhook in `src/app/api/webhooks/n8n/`
-- [ ] T002 Erstelle Verzeichnisstruktur für n8n Services in `src/services/n8n/`
-- [ ] T003 Erstelle Verzeichnisstruktur für Types in `src/types/n8n/`
-- [ ] T004 Erstelle Verzeichnisstruktur für Action Router in `src/services/n8n/routing/`
-- [ ] T005 Erstelle Verzeichnisstruktur für Integration Tests in `tests/integration/webhooks/`
-- [ ] T006 Erstelle Verzeichnisstruktur für Unit Tests in `tests/unit/services/n8n/`
+- [x] T001 Erstelle Verzeichnisstruktur für Master-Webhook in `src/app/api/webhooks/n8n/`
+- [x] T002 Erstelle Verzeichnisstruktur für n8n Services in `src/services/n8n/`
+- [x] T003 Erstelle Verzeichnisstruktur für Types in `src/types/n8n/`
+- [x] T004 Erstelle Verzeichnisstruktur für Action Router in `src/services/n8n/routing/`
+- [x] T005 Erstelle Verzeichnisstruktur für Integration Tests in `tests/integration/webhooks/`
+- [x] T006 Erstelle Verzeichnisstruktur für Unit Tests in `tests/unit/services/n8n/`
 
 ### T002: Environment Setup
 
-- [ ] T007 Erweitere `.env.example` um n8n-spezifische Variablen
+- [x] T007 Erweitere `.env.example` um n8n-spezifische Variablen
   - `N8N_WEBHOOK_URL` - Base URL der n8n Instanz
   - `N8N_WEBHOOK_SECRET` - Optional: Secret für Webhook-Authentifizierung
-- [ ] T008 Dokumentiere n8n Environment Variables in `env.example`
-  - `API_BASE_URL` - Payload CMS API Base URL
-  - `API_TOKEN` - JWT Bearer Token
-  - `PERPLEXITY_API_KEY` - Perplexity API Key
-  - `OPENAI_API_KEY` - OpenAI API Key
-  - `LINKEDIN_SCRAPER_API_KEY` - Optional: LinkedIn Scraper API Key
+- [x] T008 Dokumentiere n8n Environment Variables in `env.example`
+  - `API_BASE_URL` - Payload CMS API Base URL (für n8n Workflows)
+  - `API_TOKEN` - JWT Bearer Token (für n8n Workflows)
+  - Hinweis: OpenAI, Perplexity und LinkedIn Scraper API Keys werden in n8n Credentials konfiguriert, nicht in Payload CMS
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
 ### T003: TypeScript Types definieren
 
-- [ ] T009 Erstelle `src/types/n8n/webhooks.ts` mit Master-Webhook Types
+- [x] T009 Erstelle `src/types/n8n/webhooks.ts` mit Master-Webhook Types
   - `WebhookAction` Enum: `'company-research' | 'scrape-reference-post' | 'generate-content'`
   - `MasterWebhookRequest` - Union Type mit `action` Field und action-spezifischen Payloads
   - `MasterWebhookResponse` - Union Type mit action-spezifischen Responses
@@ -46,20 +44,20 @@ Dieses Dokument definiert die ausführbaren Aufgaben für die Implementierung de
     - `CompanyResearchPayload`
     - `ReferencePostScrapingPayload`
     - `ContentGenerationPayload`
-- [ ] T010 Erstelle `src/types/n8n/api.ts` mit API Client Types
+- [x] T010 Erstelle `src/types/n8n/api.ts` mit API Client Types
   - Payload CMS API Request/Response Types
   - Error Response Types
   - Status Types für Collections
-- [ ] T011 Erstelle `src/types/n8n/index.ts` als Barrel Export
+- [x] T011 Erstelle `src/types/n8n/index.ts` als Barrel Export
 
 ### T004: Webhook Handler Base Service
 
-- [ ] T012 Erstelle `src/services/n8n/webhook-handler.ts` mit Basis-Funktionalität
+- [x] T012 Erstelle `src/services/n8n/webhook-handler.ts` mit Basis-Funktionalität
   - Request Validation Function
   - Authentication Validation
   - Error Response Helper
   - Logger Integration
-- [ ] T013 Implementiere Error Handling Patterns
+- [x] T013 Implementiere Error Handling Patterns
   - Validation Errors (400)
   - Not Found Errors (404)
   - API Errors (500)
@@ -67,13 +65,13 @@ Dieses Dokument definiert die ausführbaren Aufgaben für die Implementierung de
 
 ### T005: Action Router Service
 
-- [ ] T014 Erstelle `src/services/n8n/routing/action-router.ts`
-- [ ] T015 Implementiere Action-Routing Logic
+- [x] T014 Erstelle `src/services/n8n/routing/action-router.ts`
+- [x] T015 Implementiere Action-Routing Logic
   - Function: `routeWebhookAction(request: MasterWebhookRequest)`
   - Action-Type Detection basierend auf `action` Field
   - Routing zu entsprechenden Handler Functions
   - Type-Safe Routing mit TypeScript Discriminated Unions
-- [ ] T016 Implementiere Action Handler Registry
+- [x] T016 Implementiere Action Handler Registry
   - Registry Pattern für Action Handlers
   - Handler Registration für alle Actions
   - Handler Lookup Function

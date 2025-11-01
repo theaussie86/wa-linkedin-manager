@@ -1,0 +1,259 @@
+{
+  "name": "Company Research Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "company-research",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "company-research-webhook"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"companyId\": $json.body.companyId } }}"
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1520, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:3000' }}/api/companies/{{ $json.body.companyId }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-company",
+      "name": "Get Company Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:3000' }}/api/companies/{{ $json.id }}",
+        "method": "PATCH",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"researchStatus\": \"in_progress\" } }}",
+        "options": {}
+      },
+      "id": "update-status-in-progress",
+      "name": "Update Status: In Progress",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "model": "llama-3.1-sonar-large-128k-online",
+        "prompt": "={{ `Du bist ein Experte für Marktforschung und Unternehmensanalyse.\n\nBitte recherchiere umfassend Informationen über das folgende Unternehmen:\n\nUnternehmensname: ${$json.name}\nWebsite: ${$json.website || 'Nicht verfügbar'}\nLinkedIn URL: ${$json.linkedinUrl || 'Nicht verfügbar'}\nBranche: ${$json.industry || 'Nicht verfügbar'}\nUnternehmensgröße: ${$json.size || 'Nicht verfügbar'}\n\nBitte generiere folgende drei Abschnitte basierend auf aktuellen Informationen:\n\n1. Business Overview (Geschäftsübersicht):\n   - Was macht das Unternehmen genau?\n   - Hauptprodukte/Services\n   - Geschäftsmodell\n   - Marktposition\n   - Aktuelle Entwicklungen\n   Sei sachlich und faktisch, vermeide Marketing-Sprache.\n\n2. Ideal Customer Profile (ICP):\n   - Wer sind die idealen Kunden?\n   - Branchen\n   - Unternehmensgrößen\n   - Entscheidungsträger-Profil\n   - Pain Points\n   - Budget-Rahmen\n\n3. Value Proposition (Wertversprechen):\n   - Was ist das einzigartige Wertversprechen?\n   - Hauptvorteile für Kunden\n   - Wettbewerbsvorteile\n   - Warum sollten Kunden dieses Unternehmen wählen?\n\nBitte gib die Antworten im folgenden JSON-Format zurück:\n{\n  \"businessOverview\": \"<RichText JSON Struktur>\",\n  \"idealCustomerProfile\": \"<RichText JSON Struktur>\",\n  \"valueProposition\": \"<RichText JSON Struktur>\"\n}\n\nWichtig: Verwende die Payload CMS RichText Format für die Textfelder. Jeder Text sollte eine valide JSON-Struktur mit root.children Array sein.` }}",
+        "options": {
+          "maxTokens": 4000,
+          "temperature": 0.3
+        }
+      },
+      "id": "perplexity-research",
+      "name": "Perplexity Research",
+      "type": "n8n-nodes-base.perplexity",
+      "typeVersion": 1,
+      "position": [900, 300],
+      "credentials": {
+        "perplexityApi": {
+          "id": "perplexity-credentials",
+          "name": "Perplexity API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Perplexity Response and convert to RichText format\nconst perplexityResponse = $input.item.json.output || $input.item.json.text || '';\n\n// Try to extract JSON from the response\nlet extractedData;\ntry {\n  // Look for JSON in the response\n  const jsonMatch = perplexityResponse.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    extractedData = JSON.parse(jsonMatch[0]);\n  } else {\n    // If no JSON found, create a structured response\n    const lines = perplexityResponse.split('\\n').filter(l => l.trim());\n    const sections = {\n      businessOverview: '',\n      idealCustomerProfile: '',\n      valueProposition: ''\n    };\n    \n    let currentSection = null;\n    lines.forEach(line => {\n      if (line.includes('Business Overview') || line.includes('Geschäftsübersicht')) {\n        currentSection = 'businessOverview';\n      } else if (line.includes('Ideal Customer Profile') || line.includes('ICP')) {\n        currentSection = 'idealCustomerProfile';\n      } else if (line.includes('Value Proposition') || line.includes('Wertversprechen')) {\n        currentSection = 'valueProposition';\n      } else if (currentSection && line.trim()) {\n        sections[currentSection] += line.trim() + '\\n';\n      }\n    });\n    \n    extractedData = sections;\n  }\n} catch (error) {\n  // Fallback: create simple text structure\n  extractedData = {\n    businessOverview: perplexityResponse,\n    idealCustomerProfile: perplexityResponse,\n    valueProposition: perplexityResponse\n  };\n}\n\n// Convert text to Payload CMS RichText format\nfunction textToRichText(text) {\n  const paragraphs = text.split('\\n\\n').filter(p => p.trim());\n  const children = paragraphs.map(paragraph => ({\n    type: 'paragraph',\n    children: [{\n      type: 'text',\n      text: paragraph.trim()\n    }],\n    version: 1\n  }));\n  \n  return {\n    root: {\n      type: 'root',\n      children: children.length > 0 ? children : [{\n        type: 'paragraph',\n        children: [{\n          type: 'text',\n          text: text || 'No content available'\n        }],\n        version: 1\n      }],\n      direction: 'ltr',\n      format: '',\n      indent: 0,\n      version: 1\n    }\n  };\n}\n\nreturn {\n  json: {\n    companyId: $('Get Company Data').item.json.id,\n    businessOverview: textToRichText(extractedData.businessOverview || extractedData.businessOverview || perplexityResponse),\n    idealCustomerProfile: textToRichText(extractedData.idealCustomerProfile || extractedData.idealCustomerProfile || perplexityResponse),\n    valueProposition: textToRichText(extractedData.valueProposition || extractedData.valueProposition || perplexityResponse)\n  }\n};"
+      },
+      "id": "parse-research-data",
+      "name": "Parse Research Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:3000' }}/api/companies/{{ $json.companyId }}",
+        "method": "PATCH",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"businessOverview\": $json.businessOverview,\n  \"idealCustomerProfile\": $json.idealCustomerProfile,\n  \"valueProposition\": $json.valueProposition,\n  \"researchStatus\": \"completed\",\n  \"lastResearchAt\": $now.toISO()\n} }}",
+        "options": {}
+      },
+      "id": "update-company-research",
+      "name": "Update Company with Research",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "error-check",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "error-check",
+      "name": "Check for Errors",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 480]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:3000' }}/api/companies/{{ $('Get Company Data').item.json.id }}",
+        "method": "PATCH",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"researchStatus\": \"failed\" } }}",
+        "options": {}
+      },
+      "id": "update-status-failed",
+      "name": "Update Status: Failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 600]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{ "node": "Get Company Data", "type": "main", "index": 0 }]]
+    },
+    "Get Company Data": {
+      "main": [
+        [
+          { "node": "Check for Errors", "type": "main", "index": 0 },
+          { "node": "Update Status: In Progress", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Check for Errors": {
+      "main": [
+        [
+          {
+            "node": "Update Status: Failed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Status: In Progress",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Status: In Progress": {
+      "main": [[{ "node": "Perplexity Research", "type": "main", "index": 0 }]]
+    },
+    "Perplexity Research": {
+      "main": [[{ "node": "Parse Research Data", "type": "main", "index": 0 }]]
+    },
+    "Parse Research Data": {
+      "main": [[{ "node": "Update Company with Research", "type": "main", "index": 0 }]]
+    },
+    "Update Company with Research": {
+      "main": [[{ "node": "Webhook Response", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2025-01-27T12:00:00.000Z",
+  "versionId": "1"
+}

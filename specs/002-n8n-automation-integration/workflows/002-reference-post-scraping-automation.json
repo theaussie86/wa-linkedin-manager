@@ -1,0 +1,269 @@
+{
+  "name": "Reference Post Scraping Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "scrape-reference-post",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "reference-post-scraping-webhook"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"referencePostId\": $json.body.referencePostId || $json.id } }}"
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1760, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:3000' }}/api/companies/{{ $json.body.companyId }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-company",
+      "name": "Get Company",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract LinkedIn Post ID from URL\nconst linkedinUrl = $input.item.json.body.linkedinUrl || '';\nconst companyId = $input.item.json.body.companyId;\n\n// LinkedIn Post URL Pattern: https://www.linkedin.com/posts/username_activity-{postId}\n// or https://www.linkedin.com/feed/update/{postId}/\nlet postId = null;\n\nif (linkedinUrl.includes('/posts/')) {\n  const match = linkedinUrl.match(/\\/posts\\/[^\\/]+-activity-([\\d]+)/);\n  if (match) {\n    postId = match[1];\n  }\n} else if (linkedinUrl.includes('/feed/update/')) {\n  const match = linkedinUrl.match(/\\/feed\\/update\\/([\\d]+)/);\n  if (match) {\n    postId = match[1];\n  }\n}\n\nreturn {\n  json: {\n    companyId: companyId,\n    linkedinUrl: linkedinUrl,\n    linkedinPostId: postId,\n    // You can add LinkedIn scraping service URL here\n    // For now, we'll use a mock structure\n    scrapeUrl: `https://api.linkedin-scraper.com/v1/posts/${postId}`\n  }\n};"
+      },
+      "id": "extract-post-id",
+      "name": "Extract Post ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.scrapeUrl }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + ($env.LINKEDIN_SCRAPER_API_KEY || '') }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "scrape-linkedin-post",
+      "name": "Scrape LinkedIn Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300],
+      "notes": "Hinweis: Dies erfordert einen LinkedIn Scraping Service. Alternativ können Sie Browser-Automation (Playwright/Puppeteer) verwenden."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse scraped LinkedIn data and normalize it\nconst scrapedData = $input.item.json;\nconst companyId = $('Extract Post ID').item.json.companyId;\nconst linkedinUrl = $('Extract Post ID').item.json.linkedinUrl;\nconst linkedinPostId = $('Extract Post ID').item.json.linkedinPostId;\n\n// Normalize the scraped data to match our ReferencePost schema\n// This assumes the scraping service returns data in a specific format\n// Adjust based on your actual scraping service response\n\nconst normalizedData = {\n  company: companyId,\n  linkedinUrl: linkedinUrl,\n  linkedinPostId: linkedinPostId,\n  title: scrapedData.title || scrapedData.headline || null,\n  content: textToRichText(scrapedData.content || scrapedData.text || scrapedData.body || ''),\n  author: scrapedData.author?.name || scrapedData.authorName || null,\n  authorProfile: scrapedData.author?.profileUrl || scrapedData.authorUrl || null,\n  linkedinAuthorId: scrapedData.author?.id || scrapedData.authorId || null,\n  postType: detectPostType(scrapedData),\n  category: detectCategory(scrapedData.content || ''),\n  likes: parseInt(scrapedData.likes || scrapedData.likeCount || 0),\n  comments: parseInt(scrapedData.comments || scrapedData.commentCount || 0),\n  shares: parseInt(scrapedData.shares || scrapedData.shareCount || 0),\n  reach: parseInt(scrapedData.reach || 0),\n  impressions: parseInt(scrapedData.impressions || 0),\n  engagementRate: calculateEngagementRate(scrapedData),\n  publishedAt: scrapedData.publishedAt || scrapedData.datePublished || new Date().toISOString(),\n  scrapedAt: new Date().toISOString(),\n  isActive: true\n};\n\n// Helper function to convert text to RichText format\nfunction textToRichText(text) {\n  if (!text) {\n    return {\n      root: {\n        type: 'root',\n        children: [{\n          type: 'paragraph',\n          children: [{ type: 'text', text: '' }],\n          version: 1\n        }],\n        direction: 'ltr',\n        format: '',\n        indent: 0,\n        version: 1\n      }\n    };\n  }\n  \n  const paragraphs = text.split('\\n\\n').filter(p => p.trim());\n  const children = paragraphs.map(paragraph => ({\n    type: 'paragraph',\n    children: [{\n      type: 'text',\n      text: paragraph.trim()\n    }],\n    version: 1\n  }));\n  \n  return {\n    root: {\n      type: 'root',\n      children: children.length > 0 ? children : [{\n        type: 'paragraph',\n        children: [{\n          type: 'text',\n          text: text\n        }],\n        version: 1\n      }],\n      direction: 'ltr',\n      format: '',\n      indent: 0,\n      version: 1\n    }\n  };\n}\n\n// Detect post type from scraped data\nfunction detectPostType(data) {\n  if (data.videoUrl || data.hasVideo) return 'video';\n  if (data.images && data.images.length > 0) return 'image';\n  if (data.articleUrl || data.articleLink) return 'article';\n  if (data.poll || data.hasPoll) return 'poll';\n  return 'text';\n}\n\n// Detect category from content\nfunction detectCategory(content) {\n  const contentLower = content.toLowerCase();\n  \n  if (contentLower.includes('case study') || contentLower.includes('erfolgsgeschichte')) {\n    return 'case_studies';\n  }\n  if (contentLower.includes('thought leadership') || contentLower.includes('thought leader')) {\n    return 'thought_leadership';\n  }\n  if (contentLower.includes('industry') || contentLower.includes('branche')) {\n    return 'industry_insights';\n  }\n  if (contentLower.includes('behind the scenes') || contentLower.includes('backstage')) {\n    return 'behind_scenes';\n  }\n  if (contentLower.includes('learn') || contentLower.includes('tutorial') || contentLower.includes('how to')) {\n    return 'educational';\n  }\n  if (contentLower.includes('announcement') || contentLower.includes('update') || contentLower.includes('news')) {\n    return 'company_updates';\n  }\n  \n  return null; // Let user categorize manually\n}\n\n// Calculate engagement rate\nfunction calculateEngagementRate(data) {\n  const likes = parseInt(data.likes || data.likeCount || 0);\n  const comments = parseInt(data.comments || data.commentCount || 0);\n  const shares = parseInt(data.shares || data.shareCount || 0);\n  const impressions = parseInt(data.impressions || 0);\n  \n  if (impressions === 0) return null;\n  \n  const engagement = likes + comments + shares;\n  return ((engagement / impressions) * 100).toFixed(2);\n}\n\nreturn {\n  json: normalizedData\n};"
+      },
+      "id": "normalize-post-data",
+      "name": "Normalize Post Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:3000' }}/api/reference-posts",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "create-reference-post",
+      "name": "Create Reference Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-duplicate",
+              "leftValue": "={{ $json.error?.message }}",
+              "rightValue": "unique",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-duplicate",
+      "name": "Check if Duplicate",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:3000' }}/api/reference-posts",
+        "method": "GET",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.API_TOKEN }}"
+            }
+          ]
+        },
+        "specifyQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "where",
+              "value": "={{ JSON.stringify({ linkedinUrl: { equals: $('Normalize Post Data').item.json.linkedinUrl } }) }}"
+            },
+            {
+              "name": "limit",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-existing-post",
+      "name": "Get Existing Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 480]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:3000' }}/api/reference-posts/{{ $json.docs[0].id }}",
+        "method": "PATCH",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('Normalize Post Data').item.json }}",
+        "options": {}
+      },
+      "id": "update-existing-post",
+      "name": "Update Existing Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1760, 480]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{ "node": "Get Company", "type": "main", "index": 0 }]]
+    },
+    "Get Company": {
+      "main": [[{ "node": "Extract Post ID", "type": "main", "index": 0 }]]
+    },
+    "Extract Post ID": {
+      "main": [[{ "node": "Scrape LinkedIn Post", "type": "main", "index": 0 }]]
+    },
+    "Scrape LinkedIn Post": {
+      "main": [[{ "node": "Normalize Post Data", "type": "main", "index": 0 }]]
+    },
+    "Normalize Post Data": {
+      "main": [[{ "node": "Create Reference Post", "type": "main", "index": 0 }]]
+    },
+    "Create Reference Post": {
+      "main": [[{ "node": "Check if Duplicate", "type": "main", "index": 0 }]]
+    },
+    "Check if Duplicate": {
+      "main": [
+        [{ "node": "Get Existing Post", "type": "main", "index": 0 }],
+        [{ "node": "Webhook Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Get Existing Post": {
+      "main": [[{ "node": "Update Existing Post", "type": "main", "index": 0 }]]
+    },
+    "Update Existing Post": {
+      "main": [[{ "node": "Webhook Response", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2025-01-27T12:00:00.000Z",
+  "versionId": "1"
+}

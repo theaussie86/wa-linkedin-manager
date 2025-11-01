@@ -1,0 +1,412 @@
+{
+  "name": "AI Content Generation Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-content",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "ai-content-generation-webhook"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"generatedPostId\": $json.id } }}"
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2200, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:3000' }}/api/generated-posts/{{ $json.body.generatedPostId }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-generated-post",
+      "name": "Get Generated Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:3000' }}/api/companies/{{ $json.company }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.API_TOKEN }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-company-data",
+      "name": "Get Company Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:3000' }}/api/reference-posts/{{ $json.referencePost }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.API_TOKEN }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-reference-post",
+      "name": "Get Reference Post (Optional)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 480],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare prompt data for AI content generation\nconst generatedPost = $('Get Generated Post').item.json;\nconst company = $('Get Company Data').item.json;\nconst referencePost = $('Get Reference Post (Optional)').item.json || null;\n\n// Extract text from RichText format\nfunction extractText(richText) {\n  if (!richText || !richText.root) return '';\n  return richText.root.children\n    .map(child => {\n      if (child.children) {\n        return child.children.map(c => c.text || '').join('');\n      }\n      return child.text || '';\n    })\n    .join('\\n');\n}\n\nconst writingStyle = generatedPost.writingStyle || 'story_based';\nconst category = generatedPost.category || 'thought_leadership';\n\n// Build context from company data\nconst companyContext = {\n  name: company.name,\n  industry: company.industry || '',\n  size: company.size || '',\n  businessOverview: extractText(company.businessOverview),\n  idealCustomerProfile: extractText(company.idealCustomerProfile),\n  valueProposition: extractText(company.valueProposition)\n};\n\n// Build reference post context if available\nconst referenceContext = referencePost ? {\n  content: extractText(referencePost.content),\n  category: referencePost.category,\n  author: referencePost.author,\n  likes: referencePost.likes || 0,\n  comments: referencePost.comments || 0,\n  engagementRate: referencePost.engagementRate || 0\n} : null;\n\n// Style-specific prompts\nconst stylePrompts = {\n  story_based: `Erzähle eine persönliche Geschichte oder Erfahrung, die mit ${companyContext.name} zu tun hat. Der Post soll emotional und authentisch sein, mit einem klaren Anfang, Mittelteil und Ende. Verwende konkrete Beispiele und persönliche Anekdoten.`,\n  insight_focused: `Erstelle einen datengetriebenen LinkedIn-Post mit konkreten Erkenntnissen und Analysen über ${companyContext.industry || 'die Branche'}. Nutze Statistiken, Trends und faktenbasierte Informationen. Der Post soll wertvolle Insights bieten.`,\n  engagement_focused: `Erstelle einen interaktiven LinkedIn-Post mit klaren Call-to-Actions für ${companyContext.name}. Stelle Fragen, lade zum Diskutieren ein und fördere die Interaktion. Der Post soll die Community zum Mitmachen anregen.`\n};\n\n// Build the main prompt\nlet prompt = `${stylePrompts[writingStyle]}\\n\\n`;\nprompt += `Unternehmenskontext:\\n`;\nprompt += `- Name: ${companyContext.name}\\n`;\nif (companyContext.industry) prompt += `- Branche: ${companyContext.industry}\\n`;\nif (companyContext.size) prompt += `- Größe: ${companyContext.size}\\n`;\nif (companyContext.businessOverview) prompt += `- Geschäftsübersicht: ${companyContext.businessOverview.substring(0, 500)}...\\n`;\nif (companyContext.valueProposition) prompt += `- Wertversprechen: ${companyContext.valueProposition.substring(0, 300)}...\\n`;\n\nif (referenceContext) {\n  prompt += `\\nReferenz-Post (für Stil-Inspiration):\\n`;\n  prompt += `- Inhalt: ${referenceContext.content.substring(0, 400)}...\\n`;\n  prompt += `- Kategorie: ${referenceContext.category}\\n`;\n  prompt += `- Engagement: ${referenceContext.likes} Likes, ${referenceContext.comments} Kommentare\\n`;\n  prompt += `\\nVersuche, den Stil und die Struktur des Referenz-Posts zu imitieren, aber mit neuem Inhalt für ${companyContext.name}.\\n`;\n}\n\nprompt += `\\nAnforderungen:\\n`;\nprompt += `- Länge: 800-1200 Zeichen (optimal für LinkedIn)\\n`;\nprompt += `- Format: Klar strukturiert mit Absätzen\\n`;\nprompt += `- Hashtags: 3-5 relevante Hashtags am Ende\\n`;\nprompt += `- Ton: Professionell aber zugänglich\\n`;\nprompt += `- Kategorie: ${category}\\n`;\nprompt += `\\nBitte generiere nur den LinkedIn-Post-Text ohne zusätzliche Erklärungen.`;\n\nreturn {\n  json: {\n    generatedPostId: generatedPost.id,\n    prompt: prompt,\n    writingStyle: writingStyle,\n    category: category,\n    companyContext: companyContext,\n    referenceContext: referenceContext\n  }\n};"
+      },
+      "id": "prepare-ai-prompt",
+      "name": "Prepare AI Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "Du bist ein Experte für LinkedIn Content Creation. Du erstellst hochwertige, engagierende LinkedIn-Posts die perfekt auf die Zielgruppe abgestimmt sind."
+            },
+            {
+              "role": "user",
+              "content": "={{ $json.prompt }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.8,
+          "maxTokens": 1500
+        }
+      },
+      "id": "openai-generate-content",
+      "name": "OpenAI Generate Content",
+      "type": "n8n-nodes-langchain.openAi",
+      "typeVersion": 1,
+      "position": [1120, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-credentials",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse OpenAI response and convert to RichText format\nconst aiResponse = $input.item.json.output || $input.item.json.text || $input.item.json.message?.content || '';\nconst generatedPostId = $('Prepare AI Prompt').item.json.generatedPostId;\n\n// Extract hashtags and main content\nlet content = aiResponse.trim();\nlet hashtags = [];\n\n// Extract hashtags (usually at the end)\nconst hashtagRegex = /#\\w+/g;\nconst foundHashtags = content.match(hashtagRegex);\nif (foundHashtags) {\n  hashtags = foundHashtags;\n  // Remove hashtags from content for now (can be stored separately)\n  content = content.replace(/\\n?#[^\\n]+/g, '').trim();\n}\n\n// Convert content to RichText format\nfunction textToRichText(text) {\n  if (!text) {\n    return {\n      root: {\n        type: 'root',\n        children: [{\n          type: 'paragraph',\n          children: [{ type: 'text', text: '' }],\n          version: 1\n        }],\n        direction: 'ltr',\n        format: '',\n        indent: 0,\n        version: 1\n      }\n    };\n  }\n  \n  // Split by double newlines for paragraphs\n  const paragraphs = text.split('\\n\\n').filter(p => p.trim());\n  const children = paragraphs.map(paragraph => ({\n    type: 'paragraph',\n    children: [{\n      type: 'text',\n      text: paragraph.trim().replace(/\\n/g, ' ')\n    }],\n    version: 1\n  }));\n  \n  return {\n    root: {\n      type: 'root',\n      children: children.length > 0 ? children : [{\n        type: 'paragraph',\n        children: [{\n          type: 'text',\n          text: text\n        }],\n        version: 1\n      }],\n      direction: 'ltr',\n      format: '',\n      indent: 0,\n      version: 1\n    }\n  };\n}\n\n// Extract title from first sentence or first 100 characters\nconst firstSentence = content.split('.')[0] || content.substring(0, 100);\nconst title = firstSentence.length > 100 ? firstSentence.substring(0, 97) + '...' : firstSentence;\n\nreturn {\n  json: {\n    generatedPostId: generatedPostId,\n    title: title,\n    content: textToRichText(content),\n    hashtags: hashtags,\n    aiPrompt: $('Prepare AI Prompt').item.json.prompt,\n    aiModel: 'gpt-4o',\n    generatedAt: new Date().toISOString()\n  }\n};"
+      },
+      "id": "parse-ai-content",
+      "name": "Parse AI Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:3000' }}/api/generated-posts/{{ $json.generatedPostId }}",
+        "method": "PATCH",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"title\": $json.title,\n  \"content\": $json.content,\n  \"tags\": $json.hashtags.map(h => ({ tag: h })),\n  \"aiPrompt\": $json.aiPrompt,\n  \"aiModel\": $json.aiModel,\n  \"generatedAt\": $json.generatedAt,\n  \"status\": \"review\"\n} }}",
+        "options": {}
+      },
+      "id": "update-generated-post",
+      "name": "Update Generated Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "should-generate-image",
+              "leftValue": "={{ $json.body.generateImage }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-image-generation",
+      "name": "Check Image Generation",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare prompt for DALL-E image generation\nconst generatedPost = $('Parse AI Content').item.json;\nconst company = $('Get Company Data').item.json;\n\n// Extract text from content for image prompt\nfunction extractText(richText) {\n  if (!richText || !richText.root) return '';\n  return richText.root.children\n    .map(child => {\n      if (child.children) {\n        return child.children.map(c => c.text || '').join('');\n      }\n      return child.text || '';\n    })\n    .join(' ');\n}\n\nconst contentText = extractText(generatedPost.content);\nconst category = $('Get Generated Post').item.json.category || 'thought_leadership';\n\n// Category-based image style\nconst imageStyles = {\n  thought_leadership: 'professional business environment, modern office, leadership concept',\n  industry_insights: 'data visualization, charts and graphs, professional presentation',\n  company_updates: 'team collaboration, modern workplace, positive atmosphere',\n  educational: 'clean infographic style, educational content, clear visuals',\n  behind_scenes: 'authentic workplace, team photos, real moments',\n  case_studies: 'before and after concept, success metrics, professional results'\n};\n\nconst imagePrompt = `Create a professional LinkedIn post image for ${company.name}.\n`;\nconst imagePrompt += `Content theme: ${category}\n`;\nconst imagePrompt += `Style: ${imageStyles[category] || 'professional business image'}\n`;\nconst imagePrompt += `Brand: Professional, modern, ${company.industry || 'business'}\n`;\nconst imagePrompt += `Colors: Professional color scheme suitable for LinkedIn\n`;\nconst imagePrompt += `Format: Horizontal/landscape orientation, 1200x627 pixels (LinkedIn post dimensions)\n`;\nconst imagePrompt += `No text overlay - clean visual only`;\n\nreturn {\n  json: {\n    generatedPostId: generatedPost.generatedPostId,\n    imagePrompt: imagePrompt,\n    size: '1024x1024' // DALL-E compatible size\n  }\n};"
+      },
+      "id": "prepare-image-prompt",
+      "name": "Prepare Image Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 300]
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "create",
+        "prompt": "={{ $json.imagePrompt }}",
+        "numberOfImages": 1,
+        "size": "={{ $json.size }}",
+        "options": {}
+      },
+      "id": "dalle-generate-image",
+      "name": "DALL-E Generate Image",
+      "type": "n8n-nodes-langchain.openAi",
+      "typeVersion": 1,
+      "position": [2220, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-credentials",
+          "name": "OpenAI API"
+        }
+      },
+      "notes": "Hinweis: DALL-E Image Generation benötigt einen separaten OpenAI API Call. Möglicherweise benötigen Sie einen HTTP Request Node mit der OpenAI Images API direkt."
+    },
+    {
+      "parameters": {
+        "url": "https://api.openai.com/v1/images/generations",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.OPENAI_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"prompt\": $json.imagePrompt,\n  \"n\": 1,\n  \"size\": \"1024x1024\"\n} }}",
+        "options": {}
+      },
+      "id": "dalle-api-call",
+      "name": "DALL-E API Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2220, 480]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.data[0].url }}",
+        "options": {}
+      },
+      "id": "download-generated-image",
+      "name": "Download Generated Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2440, 480]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:3000' }}/api/media",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.API_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "specifyBody": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "file",
+              "value": "={{ $binary.data }}"
+            },
+            {
+              "name": "alt",
+              "value": "AI-generated image for LinkedIn post"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "upload-image-to-api",
+      "name": "Upload Image to API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2660, 480]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:3000' }}/api/generated-posts/{{ $('Prepare Image Prompt').item.json.generatedPostId }}",
+        "method": "PATCH",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"images\": [{\n    \"image\": $json.id\n  }]\n} }}",
+        "options": {}
+      },
+      "id": "link-image-to-post",
+      "name": "Link Image to Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2880, 480]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{ "node": "Get Generated Post", "type": "main", "index": 0 }]]
+    },
+    "Get Generated Post": {
+      "main": [
+        [{ "node": "Get Company Data", "type": "main", "index": 0 }],
+        [{ "node": "Get Reference Post (Optional)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Get Company Data": {
+      "main": [[{ "node": "Prepare AI Prompt", "type": "main", "index": 0 }]]
+    },
+    "Get Reference Post (Optional)": {
+      "main": [[{ "node": "Prepare AI Prompt", "type": "main", "index": 0 }]]
+    },
+    "Prepare AI Prompt": {
+      "main": [[{ "node": "OpenAI Generate Content", "type": "main", "index": 0 }]]
+    },
+    "OpenAI Generate Content": {
+      "main": [[{ "node": "Parse AI Content", "type": "main", "index": 0 }]]
+    },
+    "Parse AI Content": {
+      "main": [[{ "node": "Update Generated Post", "type": "main", "index": 0 }]]
+    },
+    "Update Generated Post": {
+      "main": [[{ "node": "Check Image Generation", "type": "main", "index": 0 }]]
+    },
+    "Check Image Generation": {
+      "main": [
+        [{ "node": "Prepare Image Prompt", "type": "main", "index": 0 }],
+        [{ "node": "Webhook Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Prepare Image Prompt": {
+      "main": [[{ "node": "DALL-E API Call", "type": "main", "index": 0 }]]
+    },
+    "DALL-E API Call": {
+      "main": [[{ "node": "Download Generated Image", "type": "main", "index": 0 }]]
+    },
+    "Download Generated Image": {
+      "main": [[{ "node": "Upload Image to API", "type": "main", "index": 0 }]]
+    },
+    "Upload Image to API": {
+      "main": [[{ "node": "Link Image to Post", "type": "main", "index": 0 }]]
+    },
+    "Link Image to Post": {
+      "main": [[{ "node": "Webhook Response", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2025-01-27T12:00:00.000Z",
+  "versionId": "1"
+}

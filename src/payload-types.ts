@@ -517,7 +517,7 @@ export interface Campaign {
   name: string;
   description?: string | null;
   startDate: string;
-  endDate: string;
+  endDate?: string | null;
   status?: ('draft' | 'active' | 'paused' | 'completed' | 'cancelled') | null;
   /**
    * Generated posts included in this campaign

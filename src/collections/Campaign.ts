@@ -69,7 +69,6 @@ export const Campaign: CollectionConfig = {
     {
       name: 'endDate',
       type: 'date',
-      required: true,
       validate: (val, { siblingData }) => {
         if (val && siblingData.startDate && new Date(val) <= new Date(siblingData.startDate)) {
           return 'End date must be after start date'
@@ -196,16 +195,22 @@ export const Campaign: CollectionConfig = {
       ({ doc, req, operation }) => {
         // Log campaign creation/update
         if (operation === 'create') {
-          req.payload.logger.info(`New campaign created: ${doc.name} (${doc.id}) - Status: ${doc.status}`)
+          req.payload.logger.info(
+            `New campaign created: ${doc.name} (${doc.id}) - Status: ${doc.status}`,
+          )
         } else if (operation === 'update') {
-          req.payload.logger.info(`Campaign updated: ${doc.name} (${doc.id}) - Status: ${doc.status}`)
+          req.payload.logger.info(
+            `Campaign updated: ${doc.name} (${doc.id}) - Status: ${doc.status}`,
+          )
         }
       },
     ],
     beforeDelete: [
       async ({ id, req }) => {
         // Soft delete: Log deletion request
-        req.payload.logger.warn(`Soft delete requested for campaign ${id} - use update to set isActive=false instead`)
+        req.payload.logger.warn(
+          `Soft delete requested for campaign ${id} - use update to set isActive=false instead`,
+        )
       },
     ],
   },

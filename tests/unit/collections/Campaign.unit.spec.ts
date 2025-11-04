@@ -49,17 +49,17 @@ describe('Campaign Collection', () => {
       }
     })
 
-    it('should have required startDate and endDate fields', () => {
+    it('should have required startDate field and optional endDate field', () => {
       const startDateField = Campaign.fields?.find((f) => f.name === 'startDate')
       expect(startDateField?.required).toBe(true)
       expect(startDateField?.type).toBe('date')
 
       const endDateField = Campaign.fields?.find((f) => f.name === 'endDate')
-      expect(endDateField?.required).toBe(true)
+      expect(endDateField?.required).toBeUndefined() // endDate is optional
       expect(endDateField?.type).toBe('date')
     })
 
-    it('should validate endDate is after startDate', () => {
+    it('should validate endDate is after startDate when provided', () => {
       const endDateField = Campaign.fields?.find((f) => f.name === 'endDate')
       const validator = endDateField?.validate
 
@@ -68,6 +68,22 @@ describe('Campaign Collection', () => {
         const endDateBefore = '2023-12-31'
         const endDateAfter = '2024-01-02'
 
+        // Should allow undefined/null endDate (optional field)
+        expect(
+          validator(undefined, {
+            siblingData: { startDate },
+            data: { startDate },
+          } as any),
+        ).toBe(true)
+
+        expect(
+          validator(null, {
+            siblingData: { startDate },
+            data: { startDate },
+          } as any),
+        ).toBe(true)
+
+        // Should reject endDate before startDate
         expect(
           validator(endDateBefore, {
             siblingData: { startDate },
@@ -75,6 +91,7 @@ describe('Campaign Collection', () => {
           } as any),
         ).toBe('End date must be after start date')
 
+        // Should accept endDate after startDate
         expect(
           validator(endDateAfter, {
             siblingData: { startDate },
@@ -147,6 +164,7 @@ describe('Campaign Collection', () => {
         const startDate = '2024-01-01'
         const endDate = '2023-12-31' // Before start date
 
+        // Should throw error when endDate is before startDate
         expect(() =>
           hook({
             data: { startDate, endDate },
@@ -156,6 +174,17 @@ describe('Campaign Collection', () => {
             doc: {} as any,
           }),
         ).toThrow('End date must be after start date')
+
+        // Should not throw error when endDate is missing (optional field)
+        expect(() =>
+          hook({
+            data: { startDate },
+            operation: 'create',
+            req: {} as any,
+            previousDoc: {} as any,
+            doc: {} as any,
+          }),
+        ).not.toThrow()
       }
     })
 
@@ -246,4 +275,3 @@ describe('Campaign Collection', () => {
     })
   })
 })
-

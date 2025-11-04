@@ -74,6 +74,7 @@ export interface Config {
     'generated-posts': GeneratedPost;
     campaigns: Campaign;
     'post-analytics': PostAnalytic;
+    'linkedin-creators': LinkedinCreator;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -88,6 +89,7 @@ export interface Config {
     'generated-posts': GeneratedPostsSelect<false> | GeneratedPostsSelect<true>;
     campaigns: CampaignsSelect<false> | CampaignsSelect<true>;
     'post-analytics': PostAnalyticsSelect<false> | PostAnalyticsSelect<true>;
+    'linkedin-creators': LinkedinCreatorsSelect<false> | LinkedinCreatorsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -554,6 +556,37 @@ export interface Campaign {
   createdAt: string;
 }
 /**
+ * LinkedIn Influencer-Konten, die mit einer Company verknüpft werden können
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "linkedin-creators".
+ */
+export interface LinkedinCreator {
+  id: number;
+  /**
+   * Name des LinkedIn Influencers
+   */
+  name: string;
+  /**
+   * Beschreibung des Influencers (z.B. Tagline oder Expertise)
+   */
+  description?: string | null;
+  /**
+   * LinkedIn Profil-URL des Influencers
+   */
+  profileLink: string;
+  /**
+   * Verknüpfung zur Company
+   */
+  company: number | Company;
+  /**
+   * Aktiv-Status des Influencer-Kontos
+   */
+  isActive?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -604,6 +637,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'post-analytics';
         value: number | PostAnalytic;
+      } | null)
+    | ({
+        relationTo: 'linkedin-creators';
+        value: number | LinkedinCreator;
       } | null)
     | ({
         relationTo: 'payload-kv';
@@ -886,6 +923,19 @@ export interface PostAnalyticsSelect<T extends boolean = true> {
   period?: T;
   source?: T;
   metadata?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "linkedin-creators_select".
+ */
+export interface LinkedinCreatorsSelect<T extends boolean = true> {
+  name?: T;
+  description?: T;
+  profileLink?: T;
+  company?: T;
+  isActive?: T;
   updatedAt?: T;
   createdAt?: T;
 }

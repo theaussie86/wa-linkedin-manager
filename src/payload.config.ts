@@ -17,6 +17,7 @@ import { ReferencePost } from './collections/ReferencePost'
 import { GeneratedPost } from './collections/GeneratedPost'
 import { Campaign } from './collections/Campaign'
 import { PostAnalytics } from './collections/PostAnalytics'
+import { LinkedInCreator } from './collections/LinkedInCreator'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -164,7 +165,16 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Media, Company, ReferencePost, GeneratedPost, Campaign, PostAnalytics],
+  collections: [
+    Users,
+    Media,
+    Company,
+    ReferencePost,
+    GeneratedPost,
+    Campaign,
+    PostAnalytics,
+    LinkedInCreator,
+  ],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {

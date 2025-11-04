@@ -74,6 +74,7 @@ export interface Config {
     'generated-posts': GeneratedPost;
     campaigns: Campaign;
     'post-analytics': PostAnalytic;
+    'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
     'payload-migrations': PayloadMigration;
@@ -87,6 +88,7 @@ export interface Config {
     'generated-posts': GeneratedPostsSelect<false> | GeneratedPostsSelect<true>;
     campaigns: CampaignsSelect<false> | CampaignsSelect<true>;
     'post-analytics': PostAnalyticsSelect<false> | PostAnalyticsSelect<true>;
+    'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
@@ -212,59 +214,17 @@ export interface Company {
   description?: string | null;
   logo?: (number | null) | Media;
   /**
-   * AI-generated business overview
+   * AI-generated business overview (JSON string)
    */
-  businessOverview?: {
-    root: {
-      type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
-    };
-    [k: string]: unknown;
-  } | null;
+  businessOverview?: string | null;
   /**
-   * AI-generated ideal customer profile
+   * AI-generated ideal customer profile (JSON string)
    */
-  idealCustomerProfile?: {
-    root: {
-      type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
-    };
-    [k: string]: unknown;
-  } | null;
+  idealCustomerProfile?: string | null;
   /**
-   * AI-generated value proposition
+   * AI-generated value proposition (JSON string)
    */
-  valueProposition?: {
-    root: {
-      type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
-    };
-    [k: string]: unknown;
-  } | null;
+  valueProposition?: string | null;
   researchStatus?: ('pending' | 'in_progress' | 'completed' | 'failed') | null;
   lastResearchAt?: string | null;
   isActive?: boolean | null;
@@ -595,6 +555,23 @@ export interface Campaign {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payload-kv".
+ */
+export interface PayloadKv {
+  id: number;
+  key: string;
+  data:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-locked-documents".
  */
 export interface PayloadLockedDocument {
@@ -627,6 +604,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'post-analytics';
         value: number | PostAnalytic;
+      } | null)
+    | ({
+        relationTo: 'payload-kv';
+        value: number | PayloadKv;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -907,6 +888,14 @@ export interface PostAnalyticsSelect<T extends boolean = true> {
   metadata?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payload-kv_select".
+ */
+export interface PayloadKvSelect<T extends boolean = true> {
+  key?: T;
+  data?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

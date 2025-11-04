@@ -136,23 +136,23 @@ export const Company: CollectionConfig = {
     },
     {
       name: 'businessOverview',
-      type: 'richText',
+      type: 'textarea',
       admin: {
-        description: 'AI-generated business overview',
+        description: 'AI-generated business overview (JSON string)',
       },
     },
     {
       name: 'idealCustomerProfile',
-      type: 'richText',
+      type: 'textarea',
       admin: {
-        description: 'AI-generated ideal customer profile',
+        description: 'AI-generated ideal customer profile (JSON string)',
       },
     },
     {
       name: 'valueProposition',
-      type: 'richText',
+      type: 'textarea',
       admin: {
-        description: 'AI-generated value proposition',
+        description: 'AI-generated value proposition (JSON string)',
       },
     },
     {

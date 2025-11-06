@@ -18,13 +18,13 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ { \"success\": true, \"generatedPostId\": $json.id } }}"
+        "responseBody": "={{ { \"success\": true, \"generatedPosts\": $json.generatedPosts || [], \"slideshowUrl\": $json.slideshowUrl || null } }}"
       },
       "id": "webhook-response",
       "name": "Webhook Response",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [2200, 300]
+      "position": [4200, 600]
     },
     {
       "parameters": {
@@ -54,7 +54,135 @@
     },
     {
       "parameters": {
-        "url": "={{ $env.API_BASE_URL || 'http://localhost:3000' }}/api/companies/{{ $json.company }}",
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "input-type-check",
+              "leftValue": "={{ $json.inputType || $json.body.inputType || 'memo' }}",
+              "rightValue": "youtube",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "route-input-type",
+      "name": "Route Input Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [680, 300],
+      "notes": "Routes to YouTube, Blog, or Memo processing based on inputType"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.RAPIDAPI_YOUTUBE_URL || 'https://youtube-transcript-api.p.rapidapi.com/transcript' }}",
+        "method": "GET",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-RapidAPI-Key",
+              "value": "={{ $env.RAPIDAPI_KEY }}"
+            },
+            {
+              "name": "X-RapidAPI-Host",
+              "value": "={{ $env.RAPIDAPI_YOUTUBE_HOST || 'youtube-transcript-api.p.rapidapi.com' }}"
+            }
+          ]
+        },
+        "specifyQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "video_id",
+              "value": "={{ $json.body.inputUrl || $json.inputUrl }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "youtube-transcript-api",
+      "name": "YouTube Transcript API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 200],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process YouTube transcript - extract text from chunks and remove timestamps\nconst transcriptData = $input.item.json;\n\n// Extract transcript chunks (structure may vary by API)\nlet chunks = transcriptData.chunks || transcriptData.data || transcriptData.transcript || [];\n\n// If chunks is a string, try to parse it\nif (typeof chunks === 'string') {\n  try {\n    chunks = JSON.parse(chunks);\n  } catch (e) {\n    chunks = [];\n  }\n}\n\n// Extract only text fields and join\nlet text = '';\nif (Array.isArray(chunks)) {\n  text = chunks\n    .map(chunk => chunk.text || chunk.transcript || '')\n    .filter(t => t.trim())\n    .join(' ');\n} else if (transcriptData.text) {\n  text = transcriptData.text;\n} else if (transcriptData.transcript) {\n  text = transcriptData.transcript;\n}\n\n// Clean up text\ntext = text.trim().replace(/\\s+/g, ' ');\n\nreturn {\n  json: {\n    contentBase: text,\n    inputType: 'youtube',\n    inputUrl: $('Get Generated Post').item.json.body?.inputUrl || $('Get Generated Post').item.json.inputUrl\n  }\n};"
+      },
+      "id": "process-youtube-transcript",
+      "name": "Process YouTube Transcript",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.body.inputUrl || $json.inputUrl }}",
+        "method": "GET",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "scrape-blog-post",
+      "name": "Scrape Blog Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 400],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Convert HTML to Markdown and extract main content\nconst htmlContent = $input.item.json || '';\nconst htmlString = typeof htmlContent === 'string' ? htmlContent : JSON.stringify(htmlContent);\n\n// Simple HTML to text conversion (remove HTML tags)\nlet text = htmlString\n  .replace(/<script[^>]*>([\\s\\S]*?)<\\/script>/gi, '') // Remove scripts\n  .replace(/<style[^>]*>([\\s\\S]*?)<\\/style>/gi, '') // Remove styles\n  .replace(/<[^>]+>/g, ' ') // Remove HTML tags\n  .replace(/\\s+/g, ' ') // Normalize whitespace\n  .trim();\n\n// Extract main content (try to find article/main content)\n// This is a simplified version - in production you might want to use a proper HTML parser\n\nreturn {\n  json: {\n    contentBase: text.substring(0, 10000), // Limit to 10k chars\n    inputType: 'blog',\n    inputUrl: $('Get Generated Post').item.json.body?.inputUrl || $('Get Generated Post').item.json.inputUrl\n  }\n};"
+      },
+      "id": "process-blog-content",
+      "name": "Process Blog Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process Memo/Notizen - validate and prepare text\nconst memoText = $json.body.inputText || $json.inputText || $json.body.memo || $json.memo || '';\n\n// Validate memo text\nif (!memoText || memoText.trim().length < 50) {\n  throw new Error('Memo text must be at least 50 characters long');\n}\n\n// Clean and prepare text\nconst cleanedText = memoText.trim().replace(/\\s+/g, ' ');\n\nreturn {\n  json: {\n    contentBase: cleanedText,\n    inputType: 'memo',\n    inputUrl: null\n  }\n};"
+      },
+      "id": "process-memo-input",
+      "name": "Process Memo Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 600]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "multiplex",
+        "options": {}
+      },
+      "id": "merge-input-branches",
+      "name": "Merge Input Branches",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [1340, 400]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:3000' }}/api/companies/{{ $('Get Generated Post').item.json.company }}",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
@@ -72,11 +200,12 @@
       "name": "Get Company Data",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [680, 300]
+      "position": [1560, 400]
     },
     {
       "parameters": {
-        "url": "={{ $env.API_BASE_URL || 'http://localhost:3000' }}/api/reference-posts/{{ $json.referencePost }}",
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:3000' }}/api/reference-posts",
+        "method": "GET",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
@@ -88,161 +217,51 @@
             }
           ]
         },
+        "specifyQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "where",
+              "value": "={{ JSON.stringify({ company: { equals: $('Get Generated Post').item.json.company }, selectPost: { equals: true } }) }}"
+            },
+            {
+              "name": "limit",
+              "value": "10"
+            }
+          ]
+        },
         "options": {}
       },
-      "id": "get-reference-post",
-      "name": "Get Reference Post (Optional)",
+      "id": "get-selected-reference-posts",
+      "name": "Get Selected Reference Posts",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [680, 480],
+      "position": [1780, 400],
       "continueOnFail": true
     },
     {
       "parameters": {
-        "jsCode": "// Prepare prompt data for AI content generation\nconst generatedPost = $('Get Generated Post').item.json;\nconst company = $('Get Company Data').item.json;\nconst referencePost = $('Get Reference Post (Optional)').item.json || null;\n\n// Extract text from RichText format\nfunction extractText(richText) {\n  if (!richText || !richText.root) return '';\n  return richText.root.children\n    .map(child => {\n      if (child.children) {\n        return child.children.map(c => c.text || '').join('');\n      }\n      return child.text || '';\n    })\n    .join('\\n');\n}\n\nconst writingStyle = generatedPost.writingStyle || 'story_based';\nconst category = generatedPost.category || 'thought_leadership';\n\n// Build context from company data\nconst companyContext = {\n  name: company.name,\n  industry: company.industry || '',\n  size: company.size || '',\n  businessOverview: extractText(company.businessOverview),\n  idealCustomerProfile: extractText(company.idealCustomerProfile),\n  valueProposition: extractText(company.valueProposition)\n};\n\n// Build reference post context if available\nconst referenceContext = referencePost ? {\n  content: extractText(referencePost.content),\n  category: referencePost.category,\n  author: referencePost.author,\n  likes: referencePost.likes || 0,\n  comments: referencePost.comments || 0,\n  engagementRate: referencePost.engagementRate || 0\n} : null;\n\n// Style-specific prompts\nconst stylePrompts = {\n  story_based: `Erzähle eine persönliche Geschichte oder Erfahrung, die mit ${companyContext.name} zu tun hat. Der Post soll emotional und authentisch sein, mit einem klaren Anfang, Mittelteil und Ende. Verwende konkrete Beispiele und persönliche Anekdoten.`,\n  insight_focused: `Erstelle einen datengetriebenen LinkedIn-Post mit konkreten Erkenntnissen und Analysen über ${companyContext.industry || 'die Branche'}. Nutze Statistiken, Trends und faktenbasierte Informationen. Der Post soll wertvolle Insights bieten.`,\n  engagement_focused: `Erstelle einen interaktiven LinkedIn-Post mit klaren Call-to-Actions für ${companyContext.name}. Stelle Fragen, lade zum Diskutieren ein und fördere die Interaktion. Der Post soll die Community zum Mitmachen anregen.`\n};\n\n// Build the main prompt\nlet prompt = `${stylePrompts[writingStyle]}\\n\\n`;\nprompt += `Unternehmenskontext:\\n`;\nprompt += `- Name: ${companyContext.name}\\n`;\nif (companyContext.industry) prompt += `- Branche: ${companyContext.industry}\\n`;\nif (companyContext.size) prompt += `- Größe: ${companyContext.size}\\n`;\nif (companyContext.businessOverview) prompt += `- Geschäftsübersicht: ${companyContext.businessOverview.substring(0, 500)}...\\n`;\nif (companyContext.valueProposition) prompt += `- Wertversprechen: ${companyContext.valueProposition.substring(0, 300)}...\\n`;\n\nif (referenceContext) {\n  prompt += `\\nReferenz-Post (für Stil-Inspiration):\\n`;\n  prompt += `- Inhalt: ${referenceContext.content.substring(0, 400)}...\\n`;\n  prompt += `- Kategorie: ${referenceContext.category}\\n`;\n  prompt += `- Engagement: ${referenceContext.likes} Likes, ${referenceContext.comments} Kommentare\\n`;\n  prompt += `\\nVersuche, den Stil und die Struktur des Referenz-Posts zu imitieren, aber mit neuem Inhalt für ${companyContext.name}.\\n`;\n}\n\nprompt += `\\nAnforderungen:\\n`;\nprompt += `- Länge: 800-1200 Zeichen (optimal für LinkedIn)\\n`;\nprompt += `- Format: Klar strukturiert mit Absätzen\\n`;\nprompt += `- Hashtags: 3-5 relevante Hashtags am Ende\\n`;\nprompt += `- Ton: Professionell aber zugänglich\\n`;\nprompt += `- Kategorie: ${category}\\n`;\nprompt += `\\nBitte generiere nur den LinkedIn-Post-Text ohne zusätzliche Erklärungen.`;\n\nreturn {\n  json: {\n    generatedPostId: generatedPost.id,\n    prompt: prompt,\n    writingStyle: writingStyle,\n    category: category,\n    companyContext: companyContext,\n    referenceContext: referenceContext\n  }\n};"
+        "jsCode": "// Aggregate reference posts and extract text\nconst referencePosts = $input.item.json.docs || $input.item.json || [];\n\n// Extract text from RichText format\nfunction extractText(richText) {\n  if (!richText || !richText.root) return '';\n  return richText.root.children\n    .map(child => {\n      if (child.children) {\n        return child.children.map(c => c.text || '').join('');\n      }\n      return child.text || '';\n    })\n    .join('\\n');\n}\n\n// Aggregate all reference post content\nconst referenceTexts = Array.isArray(referencePosts)\n  ? referencePosts.map(post => extractText(post.content)).filter(t => t.trim())\n  : [];\n\nconst aggregatedReferences = referenceTexts.join('\\n\\n---\\n\\n');\n\nreturn {\n  json: {\n    referencePostsText: aggregatedReferences,\n    referencePostsCount: referenceTexts.length\n  }\n};"
+      },
+      "id": "aggregate-reference-posts",
+      "name": "Aggregate Reference Posts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare comprehensive AI prompt for 3 writing styles\nconst generatedPost = $('Get Generated Post').item.json;\nconst company = $('Get Company Data').item.json;\nconst contentBase = $('Merge Input Branches').item.json.contentBase;\nconst referencePosts = $('Aggregate Reference Posts').item.json.referencePostsText || '';\nconst customInstructions = $json.body.customInstructions || $json.customInstructions || '';\nconst cta = $json.body.cta || $json.cta || 'comment';\n\n// Extract text from RichText format\nfunction extractText(richText) {\n  if (!richText || !richText.root) return '';\n  return richText.root.children\n    .map(child => {\n      if (child.children) {\n        return child.children.map(c => c.text || '').join('');\n      }\n      return child.text || '';\n    })\n    .join('\\n');\n}\n\nconst companyContext = {\n  name: company.name,\n  industry: company.industry || '',\n  businessOverview: extractText(company.businessOverview || {}),\n  idealCustomerProfile: extractText(company.idealCustomerProfile || {}),\n  valueProposition: extractText(company.valueProposition || {})\n};\n\n// CTA mapping\nconst ctaMapping = {\n  comment: 'Lade zum Kommentieren ein',\n  visit_website: 'Besuche unsere Website',\n  follow: 'Folge für mehr Insights',\n  connect: 'Lass uns connecten'\n};\n\nconst ctaText = ctaMapping[cta] || ctaMapping.comment;\n\n// Build comprehensive prompt\nlet systemPrompt = `Du bist ein Experte für LinkedIn Content Creation. Erstelle drei unterschiedliche LinkedIn-Posts basierend auf dem bereitgestellten Content.`;\n\nlet userPrompt = `Basierend auf folgendem Content erstelle drei LinkedIn-Posts in unterschiedlichen Schreibstilen:\\n\\n`;\nuserPrompt += `Content-Basis:\\n${contentBase.substring(0, 2000)}\\n\\n`;\nuserPrompt += `Unternehmenskontext:\\n`;\nuserPrompt += `- Name: ${companyContext.name}\\n`;\nif (companyContext.industry) userPrompt += `- Branche: ${companyContext.industry}\\n`;\nif (companyContext.businessOverview) userPrompt += `- Geschäftsübersicht: ${companyContext.businessOverview.substring(0, 500)}\\n`;\nif (companyContext.valueProposition) userPrompt += `- Wertversprechen: ${companyContext.valueProposition.substring(0, 300)}\\n`;\nif (companyContext.idealCustomerProfile) userPrompt += `- Zielgruppe: ${companyContext.idealCustomerProfile.substring(0, 300)}\\n`;\n\nif (referencePosts) {\n  userPrompt += `\\nReferenz-Posts (für Stil-Inspiration):\\n${referencePosts.substring(0, 1000)}\\n`;\n  userPrompt += `\\nVersuche, den Stil und die Struktur der Referenz-Posts zu imitieren.\\n`;\n}\n\nif (customInstructions) {\n  userPrompt += `\\nZusätzliche Anweisungen: ${customInstructions}\\n`;\n}\n\nuserPrompt += `\\nErstelle drei verschiedene LinkedIn-Posts:\\n`;\nuserPrompt += `1. Story-based: Persönliche Geschichte oder Erfahrung, emotional und authentisch\\n`;\nuserPrompt += `2. Insight-focused: Datengetriebene Erkenntnisse und Analysen\\n`;\nuserPrompt += `3. Engagement-focused: Interaktiver Post mit Call-to-Action (${ctaText})\\n`;\nuserPrompt += `\\nAnforderungen:\\n`;\nuserPrompt += `- Länge: 800-1200 Zeichen pro Post\\n`;\nuserPrompt += `- Format: Klar strukturiert mit Absätzen\\n`;\nuserPrompt += `- Hashtags: 3-5 relevante Hashtags am Ende\\n`;\nuserPrompt += `- Ton: Professionell aber zugänglich\\n`;\n\nreturn {\n  json: {\n    generatedPostId: generatedPost.id,\n    companyId: company.id,\n    systemPrompt: systemPrompt,\n    userPrompt: userPrompt,\n    cta: cta,\n    customInstructions: customInstructions\n  }\n};"
       },
       "id": "prepare-ai-prompt",
       "name": "Prepare AI Prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [900, 300]
+      "position": [2220, 400]
     },
     {
       "parameters": {
-        "model": "gpt-4o",
-        "messages": {
-          "values": [
-            {
-              "role": "system",
-              "content": "Du bist ein Experte für LinkedIn Content Creation. Du erstellst hochwertige, engagierende LinkedIn-Posts die perfekt auf die Zielgruppe abgestimmt sind."
-            },
-            {
-              "role": "user",
-              "content": "={{ $json.prompt }}"
-            }
-          ]
-        },
-        "options": {
-          "temperature": 0.8,
-          "maxTokens": 1500
-        }
-      },
-      "id": "openai-generate-content",
-      "name": "OpenAI Generate Content",
-      "type": "n8n-nodes-langchain.openAi",
-      "typeVersion": 1,
-      "position": [1120, 300],
-      "credentials": {
-        "openAiApi": {
-          "id": "openai-credentials",
-          "name": "OpenAI API"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "// Parse OpenAI response and convert to RichText format\nconst aiResponse = $input.item.json.output || $input.item.json.text || $input.item.json.message?.content || '';\nconst generatedPostId = $('Prepare AI Prompt').item.json.generatedPostId;\n\n// Extract hashtags and main content\nlet content = aiResponse.trim();\nlet hashtags = [];\n\n// Extract hashtags (usually at the end)\nconst hashtagRegex = /#\\w+/g;\nconst foundHashtags = content.match(hashtagRegex);\nif (foundHashtags) {\n  hashtags = foundHashtags;\n  // Remove hashtags from content for now (can be stored separately)\n  content = content.replace(/\\n?#[^\\n]+/g, '').trim();\n}\n\n// Convert content to RichText format\nfunction textToRichText(text) {\n  if (!text) {\n    return {\n      root: {\n        type: 'root',\n        children: [{\n          type: 'paragraph',\n          children: [{ type: 'text', text: '' }],\n          version: 1\n        }],\n        direction: 'ltr',\n        format: '',\n        indent: 0,\n        version: 1\n      }\n    };\n  }\n  \n  // Split by double newlines for paragraphs\n  const paragraphs = text.split('\\n\\n').filter(p => p.trim());\n  const children = paragraphs.map(paragraph => ({\n    type: 'paragraph',\n    children: [{\n      type: 'text',\n      text: paragraph.trim().replace(/\\n/g, ' ')\n    }],\n    version: 1\n  }));\n  \n  return {\n    root: {\n      type: 'root',\n      children: children.length > 0 ? children : [{\n        type: 'paragraph',\n        children: [{\n          type: 'text',\n          text: text\n        }],\n        version: 1\n      }],\n      direction: 'ltr',\n      format: '',\n      indent: 0,\n      version: 1\n    }\n  };\n}\n\n// Extract title from first sentence or first 100 characters\nconst firstSentence = content.split('.')[0] || content.substring(0, 100);\nconst title = firstSentence.length > 100 ? firstSentence.substring(0, 97) + '...' : firstSentence;\n\nreturn {\n  json: {\n    generatedPostId: generatedPostId,\n    title: title,\n    content: textToRichText(content),\n    hashtags: hashtags,\n    aiPrompt: $('Prepare AI Prompt').item.json.prompt,\n    aiModel: 'gpt-4o',\n    generatedAt: new Date().toISOString()\n  }\n};"
-      },
-      "id": "parse-ai-content",
-      "name": "Parse AI Content",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1340, 300]
-    },
-    {
-      "parameters": {
-        "url": "={{ $env.API_BASE_URL || 'http://localhost:3000' }}/api/generated-posts/{{ $json.generatedPostId }}",
-        "method": "PATCH",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "={{ 'Bearer ' + $env.API_TOKEN }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ {\n  \"title\": $json.title,\n  \"content\": $json.content,\n  \"tags\": $json.hashtags.map(h => ({ tag: h })),\n  \"aiPrompt\": $json.aiPrompt,\n  \"aiModel\": $json.aiModel,\n  \"generatedAt\": $json.generatedAt,\n  \"status\": \"review\"\n} }}",
-        "options": {}
-      },
-      "id": "update-generated-post",
-      "name": "Update Generated Post",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1560, 300]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "should-generate-image",
-              "leftValue": "={{ $json.body.generateImage }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "check-image-generation",
-      "name": "Check Image Generation",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [1780, 300]
-    },
-    {
-      "parameters": {
-        "jsCode": "// Prepare prompt for DALL-E image generation\nconst generatedPost = $('Parse AI Content').item.json;\nconst company = $('Get Company Data').item.json;\n\n// Extract text from content for image prompt\nfunction extractText(richText) {\n  if (!richText || !richText.root) return '';\n  return richText.root.children\n    .map(child => {\n      if (child.children) {\n        return child.children.map(c => c.text || '').join('');\n      }\n      return child.text || '';\n    })\n    .join(' ');\n}\n\nconst contentText = extractText(generatedPost.content);\nconst category = $('Get Generated Post').item.json.category || 'thought_leadership';\n\n// Category-based image style\nconst imageStyles = {\n  thought_leadership: 'professional business environment, modern office, leadership concept',\n  industry_insights: 'data visualization, charts and graphs, professional presentation',\n  company_updates: 'team collaboration, modern workplace, positive atmosphere',\n  educational: 'clean infographic style, educational content, clear visuals',\n  behind_scenes: 'authentic workplace, team photos, real moments',\n  case_studies: 'before and after concept, success metrics, professional results'\n};\n\nconst imagePrompt = `Create a professional LinkedIn post image for ${company.name}.\n`;\nconst imagePrompt += `Content theme: ${category}\n`;\nconst imagePrompt += `Style: ${imageStyles[category] || 'professional business image'}\n`;\nconst imagePrompt += `Brand: Professional, modern, ${company.industry || 'business'}\n`;\nconst imagePrompt += `Colors: Professional color scheme suitable for LinkedIn\n`;\nconst imagePrompt += `Format: Horizontal/landscape orientation, 1200x627 pixels (LinkedIn post dimensions)\n`;\nconst imagePrompt += `No text overlay - clean visual only`;\n\nreturn {\n  json: {\n    generatedPostId: generatedPost.generatedPostId,\n    imagePrompt: imagePrompt,\n    size: '1024x1024' // DALL-E compatible size\n  }\n};"
-      },
-      "id": "prepare-image-prompt",
-      "name": "Prepare Image Prompt",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [2000, 300]
-    },
-    {
-      "parameters": {
-        "resource": "image",
-        "operation": "create",
-        "prompt": "={{ $json.imagePrompt }}",
-        "numberOfImages": 1,
-        "size": "={{ $json.size }}",
-        "options": {}
-      },
-      "id": "dalle-generate-image",
-      "name": "DALL-E Generate Image",
-      "type": "n8n-nodes-langchain.openAi",
-      "typeVersion": 1,
-      "position": [2220, 300],
-      "credentials": {
-        "openAiApi": {
-          "id": "openai-credentials",
-          "name": "OpenAI API"
-        }
-      },
-      "notes": "Hinweis: DALL-E Image Generation benötigt einen separaten OpenAI API Call. Möglicherweise benötigen Sie einen HTTP Request Node mit der OpenAI Images API direkt."
-    },
-    {
-      "parameters": {
-        "url": "https://api.openai.com/v1/images/generations",
+        "url": "https://api.openai.com/v1/chat/completions",
         "method": "POST",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
@@ -261,29 +280,50 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ {\n  \"prompt\": $json.imagePrompt,\n  \"n\": 1,\n  \"size\": \"1024x1024\"\n} }}",
+        "jsonBody": "={{ {\n  \"model\": \"gpt-4o\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": $json.systemPrompt\n    },\n    {\n      \"role\": \"user\",\n      \"content\": $json.userPrompt + '\\n\\nBitte gib die Antwort im folgenden JSON-Format zurück: {\\n  \"posts\": [\\n    {\\n      \"title\": \"Post Titel\",\\n      \"content\": \"Post Inhalt\",\\n      \"contentType\": \"story_based\",\\n      \"hashtags\": [\"#hashtag1\", \"#hashtag2\"]\\n    },\\n    {\\n      \"title\": \"Post Titel\",\\n      \"content\": \"Post Inhalt\",\\n      \"contentType\": \"insight_focused\",\\n      \"hashtags\": [\"#hashtag1\", \"#hashtag2\"]\\n    },\\n    {\\n      \"title\": \"Post Titel\",\\n      \"content\": \"Post Inhalt\",\\n      \"contentType\": \"engagement_focused\",\\n      \"hashtags\": [\"#hashtag1\", \"#hashtag2\"]\\n    }\\n  ]\\n}' + '\\n\\nWichtig: Der contentType muss genau einer dieser Werte sein: story_based, insight_focused, engagement_focused.'\n    }\n  ],\n  \"temperature\": 0.8,\n  \"max_tokens\": 3000,\n  \"response_format\": { \"type\": \"json_object\" }\n} }}",
         "options": {}
       },
-      "id": "dalle-api-call",
-      "name": "DALL-E API Call",
+      "id": "openai-generate-content",
+      "name": "OpenAI Generate Content",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2220, 480]
+      "position": [2440, 400]
     },
     {
       "parameters": {
-        "url": "={{ $json.data[0].url }}",
-        "options": {}
+        "jsCode": "// Parse OpenAI response and extract 3 posts\nconst aiResponse = $input.item.json;\nconst generatedPostId = $('Prepare AI Prompt').item.json.generatedPostId;\n\n// Extract content from response\nlet responseContent = '';\nif (aiResponse.choices && aiResponse.choices[0] && aiResponse.choices[0].message) {\n  responseContent = aiResponse.choices[0].message.content || '';\n} else if (aiResponse.content) {\n  responseContent = aiResponse.content;\n} else if (typeof aiResponse === 'string') {\n  responseContent = aiResponse;\n}\n\n// Try to parse JSON from response\nlet postsData;\ntry {\n  // Try to extract JSON from response\n  const jsonMatch = responseContent.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    postsData = JSON.parse(jsonMatch[0]);\n  } else {\n    postsData = JSON.parse(responseContent);\n  }\n} catch (e) {\n  // Fallback: create simple structure\n  postsData = {\n    posts: [\n      {\n        title: 'Generated Post',\n        content: responseContent,\n        contentType: 'story_based',\n        hashtags: []\n      }\n    ]\n  };\n}\n\n// Convert content to RichText format\nfunction textToRichText(text) {\n  if (!text) {\n    return {\n      root: {\n        type: 'root',\n        children: [{\n          type: 'paragraph',\n          children: [{ type: 'text', text: '' }],\n          version: 1\n        }],\n        direction: 'ltr',\n        format: '',\n        indent: 0,\n        version: 1\n      }\n    };\n  }\n  \n  const paragraphs = text.split('\\n\\n').filter(p => p.trim());\n  const children = paragraphs.map(paragraph => ({\n    type: 'paragraph',\n    children: [{\n      type: 'text',\n      text: paragraph.trim().replace(/\\n/g, ' ')\n    }],\n    version: 1\n  }));\n  \n  return {\n    root: {\n      type: 'root',\n      children: children.length > 0 ? children : [{\n        type: 'paragraph',\n        children: [{\n          type: 'text',\n          text: text\n        }],\n        version: 1\n      }],\n      direction: 'ltr',\n      format: '',\n      indent: 0,\n      version: 1\n    }\n  };\n}\n\n// Process posts array\nconst posts = Array.isArray(postsData.posts) ? postsData.posts : [postsData];\n\nconst processedPosts = posts.map((post, index) => {\n  const contentType = post.contentType || ['story_based', 'insight_focused', 'engagement_focused'][index] || 'story_based';\n  \n  return {\n    generatedPostId: generatedPostId,\n    title: post.title || `Post ${index + 1}`,\n    content: textToRichText(post.content || ''),\n    contentType: contentType,\n    hashtags: Array.isArray(post.hashtags) ? post.hashtags : [],\n    aiPrompt: $('Prepare AI Prompt').item.json.userPrompt,\n    aiModel: 'gpt-4o',\n    generatedAt: new Date().toISOString()\n  };\n});\n\nreturn processedPosts.map(post => ({ json: post }));"
       },
-      "id": "download-generated-image",
-      "name": "Download Generated Image",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [2440, 480]
+      "id": "parse-ai-content",
+      "name": "Parse AI Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2660, 400]
     },
     {
       "parameters": {
-        "url": "={{ $env.API_BASE_URL || 'http://localhost:3000' }}/api/media",
+        "mode": "splitOutItems",
+        "fieldToSplitOut": "={{ 'json' }}",
+        "options": {}
+      },
+      "id": "split-posts",
+      "name": "Split Posts",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [2880, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate high-quality image prompt with branding\nconst post = $input.item.json;\nconst company = $('Get Company Data').item.json;\nconst customImageInstructions = $json.body.customImageInstructions || $json.customImageInstructions || '';\n\n// Extract text from content\nfunction extractText(richText) {\n  if (!richText || !richText.root) return '';\n  return richText.root.children\n    .map(child => {\n      if (child.children) {\n        return child.children.map(c => c.text || '').join('');\n      }\n      return child.text || '';\n    })\n    .join(' ');\n}\n\nconst postContent = extractText(post.content);\nconst contentType = post.contentType || 'story_based';\n\n// Content type based image styles\nconst imageStyles = {\n  story_based: 'warm, authentic, personal, storytelling atmosphere, human-focused, relatable',\n  insight_focused: 'professional data visualization, charts, graphs, analytical, modern infographic style',\n  engagement_focused: 'interactive, vibrant, community-focused, engaging visuals, call-to-action oriented'\n};\n\n// Build comprehensive image prompt\nlet imagePrompt = `Create a professional LinkedIn post image.\\n`;\nimagePrompt += `Company: ${company.name}\\n`;\nimagePrompt += `Industry: ${company.industry || 'Business'}\\n`;\nimagePrompt += `Content Type: ${contentType}\\n`;\nimagePrompt += `Style: ${imageStyles[contentType] || 'professional business image'}\\n`;\nimagePrompt += `Branding: Professional, modern, ${company.industry || 'business'} aesthetic\\n`;\nimagePrompt += `Color Scheme: Professional color palette suitable for LinkedIn\\n`;\nimagePrompt += `Post Theme: ${postContent.substring(0, 200)}\\n`;\nimagePrompt += `Format: Horizontal/landscape orientation, 1200x627 pixels (LinkedIn post dimensions)\\n`;\nimagePrompt += `Quality: High resolution, professional photography or illustration style\\n`;\n\nif (customImageInstructions) {\n  imagePrompt += `\\nAdditional Instructions: ${customImageInstructions}\\n`;\n}\n\nimagePrompt += `\\nImportant: No text overlay - clean visual only. The image should complement the post content without duplicating text.`;\n\nreturn {\n  json: {\n    postId: post.generatedPostId,\n    postTitle: post.title,\n    postContent: postContent,\n    contentType: contentType,\n    imagePrompt: imagePrompt,\n    companyName: company.name,\n    companyIndustry: company.industry || ''\n  }\n};"
+      },
+      "id": "generate-image-prompt",
+      "name": "Generate Image Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3100, 400]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.GOOGLE_NANO_BANANA_URL || 'https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict' }}",
         "method": "POST",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
@@ -292,36 +332,108 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "={{ 'Bearer ' + $env.API_TOKEN }}"
+              "value": "={{ 'Bearer ' + $env.GOOGLE_NANO_BANANA_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
             }
           ]
         },
         "sendBody": true,
-        "contentType": "multipart-form-data",
-        "specifyBody": "multipart-form-data",
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "file",
-              "value": "={{ $binary.data }}"
-            },
-            {
-              "name": "alt",
-              "value": "AI-generated image for LinkedIn post"
-            }
-          ]
-        },
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"prompt\": $json.imagePrompt,\n  \"aspectRatio\": \"16:9\",\n  \"safetyFilterLevel\": \"block_some\",\n  \"personGeneration\": \"allow_adult\"\n} }}",
         "options": {}
       },
-      "id": "upload-image-to-api",
-      "name": "Upload Image to API",
+      "id": "google-nano-banana-generate",
+      "name": "Google nano banana Generate",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2660, 480]
+      "position": [3320, 400],
+      "continueOnFail": true,
+      "notes": "Google nano banana API für Image Generation. API-Endpoint und Format müssen basierend auf aktueller Dokumentation angepasst werden."
     },
     {
       "parameters": {
-        "url": "={{ $env.API_BASE_URL || 'http://localhost:3000' }}/api/generated-posts/{{ $('Prepare Image Prompt').item.json.generatedPostId }}",
+        "jsCode": "// Extract image from Google nano banana response and convert to base64/file\nconst response = $input.item.json;\n\n// Extract image data (structure may vary)\nlet imageData = null;\nlet imageUrl = null;\n\nif (response.imageBase64) {\n  imageData = response.imageBase64;\n} else if (response.data && response.data.imageBase64) {\n  imageData = response.data.imageBase64;\n} else if (response.imageUrl) {\n  imageUrl = response.imageUrl;\n} else if (response.data && response.data.imageUrl) {\n  imageUrl = response.data.imageUrl;\n} else if (response.images && response.images[0]) {\n  imageData = response.images[0].base64 || response.images[0].imageBase64;\n  imageUrl = response.images[0].url || response.images[0].imageUrl;\n}\n\n// If we have a URL, download it first\nif (imageUrl && !imageData) {\n  // Store URL for download step\n  return {\n    json: {\n      ...$('Generate Image Prompt').item.json,\n      imageUrl: imageUrl,\n      needsDownload: true\n    }\n  };\n}\n\n// Convert base64 to binary if needed\nif (imageData) {\n  return {\n    json: {\n      ...$('Generate Image Prompt').item.json,\n      imageBase64: imageData,\n      needsDownload: false\n    },\n    binary: {\n      data: Buffer.from(imageData, 'base64')\n    }\n  };\n}\n\n// Fallback\nreturn {\n  json: {\n    ...$('Generate Image Prompt').item.json,\n    error: 'No image data found in response'\n  }\n};"
+      },
+      "id": "process-image-response",
+      "name": "Process Image Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3540, 400]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.imageUrl }}",
+        "options": {}
+      },
+      "id": "download-image-if-needed",
+      "name": "Download Image if Needed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3760, 400],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare file for Supabase Storage upload\nconst postData = $('Generate Image Prompt').item.json;\nconst imageBinary = $binary?.data || $('Process Image Response').item.binary?.data;\n\nif (!imageBinary) {\n  throw new Error('No image binary data available');\n}\n\n// Generate filename\nconst timestamp = Date.now();\nconst filename = `linkedin-post-${postData.postId}-${postData.contentType}-${timestamp}.png`;\n\nreturn {\n  json: {\n    ...postData,\n    filename: filename,\n    contentType: 'image/png'\n  },\n  binary: {\n    data: imageBinary\n  }\n};"
+      },
+      "id": "prepare-file-upload",
+      "name": "Prepare File Upload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3980, 400]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL || 'https://your-project.supabase.co' }}/storage/v1/object/{{ $env.SUPABASE_STORAGE_BUCKET || 'media' }}/{{ $json.filename }}",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "={{ $json.contentType }}"
+            },
+            {
+              "name": "x-upsert",
+              "value": "false"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "bodyContentType": "={{ $json.contentType }}",
+        "rawContent": "={{ $binary.data }}",
+        "options": {}
+      },
+      "id": "upload-to-supabase-storage",
+      "name": "Upload to Supabase Storage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4200, 400],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate public URL for uploaded image\nconst uploadResponse = $input.item.json;\nconst postData = $('Prepare File Upload').item.json;\nconst supabaseUrl = $env.SUPABASE_URL || 'https://your-project.supabase.co';\nconst bucket = $env.SUPABASE_STORAGE_BUCKET || 'media';\n\n// Extract path from response\nlet imagePath = uploadResponse.path || uploadResponse.Key || postData.filename;\n\n// Generate public URL\nconst publicUrl = `${supabaseUrl}/storage/v1/object/public/${bucket}/${imagePath}`;\n\nreturn {\n  json: {\n    ...postData,\n    imageUrl: publicUrl,\n    imagePath: imagePath\n  }\n};"
+      },
+      "id": "generate-public-url",
+      "name": "Generate Public URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4420, 400]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:3000' }}/api/generated-posts/{{ $json.postId }}",
         "method": "PATCH",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
@@ -340,14 +452,198 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ {\n  \"images\": [{\n    \"image\": $json.id\n  }]\n} }}",
+        "jsonBody": "={{ {\n  \"title\": $json.postTitle,\n  \"content\": $('Split Posts').item.json.content,\n  \"tags\": $('Split Posts').item.json.hashtags.map(h => ({ tag: h })),\n  \"aiPrompt\": $json.aiPrompt || $('Split Posts').item.json.aiPrompt,\n  \"aiModel\": $('Split Posts').item.json.aiModel || 'gpt-4o',\n  \"generatedAt\": $('Split Posts').item.json.generatedAt,\n  \"status\": \"review\",\n  \"images\": [{\n    \"image\": {\n      \"url\": $json.imageUrl\n    }\n  }]\n} }}",
         "options": {}
       },
-      "id": "link-image-to-post",
-      "name": "Link Image to Post",
+      "id": "update-post-with-image",
+      "name": "Update Post with Image",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2880, 480]
+      "position": [4640, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-slideshow",
+              "leftValue": "={{ $json.body.generateSlideshow || false }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-slideshow-generation",
+      "name": "Check Slideshow Generation",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [4860, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect all generated posts for slideshow\nconst allPosts = $('Split Posts').all() || [];\nconst company = $('Get Company Data').item.json;\n\n// Extract branding information\nconst brandingInfo = {\n  companyName: company.name,\n  industry: company.industry || '',\n  primaryColor: company.brandColor || '#0077B5', // LinkedIn blue as default\n  secondaryColor: company.secondaryColor || '#FFFFFF'\n};\n\n// Prepare slideshow data\nconst slideshowData = {\n  branding: brandingInfo,\n  posts: allPosts.map((item, index) => {\n    const post = item.json;\n    const imageData = $('Generate Public URL').item.json || {};\n    \n    return {\n      slideNumber: index + 1,\n      title: post.title || post.postTitle,\n      content: post.content || post.postContent,\n      contentType: post.contentType,\n      imageUrl: imageData.imageUrl || null\n    };\n  })\n};\n\nreturn {\n  json: {\n    slideshowData: slideshowData,\n    companyId: company.id,\n    generatedPostId: $('Prepare AI Prompt').item.json.generatedPostId\n  }\n};"
+      },
+      "id": "prepare-slideshow-data",
+      "name": "Prepare Slideshow Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [5080, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate slideshow image prompts with consistent branding\nconst slideshowData = $('Prepare Slideshow Data').item.json.slideshowData;\nconst branding = slideshowData.branding;\n\n// Generate prompts for each slide\nconst slidePrompts = slideshowData.posts.map((slide, index) => {\n  let prompt = `Create a LinkedIn slideshow slide ${index + 1} of ${slideshowData.posts.length}.\\n`;\n  prompt += `Company: ${branding.companyName}\\n`;\n  prompt += `Branding: Primary color ${branding.primaryColor}, Secondary color ${branding.secondaryColor}\\n`;\n  prompt += `Slide Content: ${slide.title}\\n`;\n  prompt += `Content Type: ${slide.contentType}\\n`;\n  prompt += `Style: Consistent branding across all slides, professional design\\n`;\n  prompt += `Format: Vertical/portrait orientation, 1080x1920 pixels (LinkedIn slideshow dimensions)\\n`;\n  prompt += `Design: Clean layout, on-brand colors, minimal text overlay if needed\\n`;\n  \n  return {\n    slideNumber: slide.slideNumber,\n    imagePrompt: prompt,\n    postData: slide\n  };\n});\n\nreturn slidePrompts.map(p => ({ json: p }));"
+      },
+      "id": "generate-slideshow-prompts",
+      "name": "Generate Slideshow Prompts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [5300, 500]
+    },
+    {
+      "parameters": {
+        "mode": "splitOutItems",
+        "fieldToSplitOut": "={{ 'json' }}",
+        "options": {}
+      },
+      "id": "split-slideshow-prompts",
+      "name": "Split Slideshow Prompts",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [5520, 500]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.GOOGLE_NANO_BANANA_URL || 'https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict' }}",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.GOOGLE_NANO_BANANA_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"prompt\": $json.imagePrompt,\n  \"aspectRatio\": \"9:16\",\n  \"safetyFilterLevel\": \"block_some\",\n  \"personGeneration\": \"allow_adult\"\n} }}",
+        "options": {}
+      },
+      "id": "generate-slideshow-image",
+      "name": "Generate Slideshow Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [5740, 500],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process slideshow image and prepare for upload\nconst response = $input.item.json;\nconst slideData = $('Generate Slideshow Prompts').item.json;\n\n// Extract image data (similar to regular image processing)\nlet imageData = null;\nlet imageUrl = null;\n\nif (response.imageBase64) {\n  imageData = response.imageBase64;\n} else if (response.data && response.data.imageBase64) {\n  imageData = response.data.imageBase64;\n} else if (response.imageUrl) {\n  imageUrl = response.imageUrl;\n} else if (response.data && response.data.imageUrl) {\n  imageUrl = response.data.imageUrl;\n}\n\n// Generate filename\nconst timestamp = Date.now();\nconst filename = `slideshow-${slideData.slideNumber}-${timestamp}.png`;\n\nreturn {\n  json: {\n    ...slideData,\n    filename: filename,\n    imageBase64: imageData,\n    imageUrl: imageUrl,\n    contentType: 'image/png'\n  },\n  binary: imageData ? {\n    data: Buffer.from(imageData, 'base64')\n  } : null\n};"
+      },
+      "id": "process-slideshow-image",
+      "name": "Process Slideshow Image",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [5960, 500]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL || 'https://your-project.supabase.co' }}/storage/v1/object/{{ $env.SUPABASE_STORAGE_BUCKET || 'media' }}/slideshows/{{ $json.filename }}",
+        "method": "POST",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.SUPABASE_SERVICE_ROLE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "={{ $json.contentType }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "bodyContentType": "={{ $json.contentType }}",
+        "rawContent": "={{ $binary.data }}",
+        "options": {}
+      },
+      "id": "upload-slideshow-image",
+      "name": "Upload Slideshow Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [6180, 500],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate all slideshow images and create slideshow structure\nconst allSlides = $('Split Slideshow Prompts').all() || [];\nconst slideshowData = $('Prepare Slideshow Data').item.json.slideshowData;\nconst supabaseUrl = $env.SUPABASE_URL || 'https://your-project.supabase.co';\nconst bucket = $env.SUPABASE_STORAGE_BUCKET || 'media';\n\n// Map slides with their uploaded images\nconst slidesWithImages = allSlides.map((slideItem, index) => {\n  const slideJson = slideItem.json;\n  const uploadResponse = $input.item.json || {};\n  \n  let imagePath = uploadResponse.path || slideJson.filename;\n  const publicUrl = `${supabaseUrl}/storage/v1/object/public/${bucket}/slideshows/${imagePath}`;\n  \n  return {\n    slideNumber: slideJson.slideNumber || index + 1,\n    title: slideJson.postData?.title || '',\n    content: slideJson.postData?.content || '',\n    contentType: slideJson.postData?.contentType || '',\n    imageUrl: publicUrl,\n    imagePath: imagePath\n  };\n});\n\n// Create slideshow metadata\nconst slideshowMetadata = {\n  companyId: slideshowData.companyId || $('Prepare Slideshow Data').item.json.companyId,\n  generatedPostId: $('Prepare Slideshow Data').item.json.generatedPostId,\n  branding: slideshowData.branding,\n  slides: slidesWithImages,\n  createdAt: new Date().toISOString()\n};\n\nreturn {\n  json: {\n    slideshowMetadata: slideshowMetadata,\n    slideshowUrl: `${supabaseUrl}/storage/v1/object/public/${bucket}/slideshows/`\n  }\n};"
+      },
+      "id": "aggregate-slideshow",
+      "name": "Aggregate Slideshow",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [6400, 500]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.API_BASE_URL || 'http://localhost:3000' }}/api/generated-posts/{{ $json.slideshowMetadata.generatedPostId }}",
+        "method": "PATCH",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  \"slideshow\": $json.slideshowMetadata,\n  \"slideshowUrl\": $json.slideshowUrl\n} }}",
+        "options": {}
+      },
+      "id": "save-slideshow-metadata",
+      "name": "Save Slideshow Metadata",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [6620, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate all generated posts for final response\nconst allPosts = $('Split Posts').all() || [];\nconst slideshowData = $('Check Slideshow Generation').item.json || null;\n\nconst generatedPosts = allPosts.map(item => {\n  const post = item.json;\n  const imageData = $('Generate Public URL').item.json || {};\n  \n  return {\n    id: post.generatedPostId,\n    title: post.title,\n    contentType: post.contentType,\n    imageUrl: imageData.imageUrl || null,\n    status: 'review'\n  };\n});\n\nreturn {\n  json: {\n    generatedPosts: generatedPosts,\n    slideshowUrl: slideshowData?.slideshowUrl || null,\n    success: true\n  }\n};"
+      },
+      "id": "prepare-final-response",
+      "name": "Prepare Final Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4200, 600]
     }
   ],
   "connections": {
@@ -355,15 +651,43 @@
       "main": [[{ "node": "Get Generated Post", "type": "main", "index": 0 }]]
     },
     "Get Generated Post": {
+      "main": [[{ "node": "Route Input Type", "type": "main", "index": 0 }]]
+    },
+    "Route Input Type": {
+      "main": [
+        [{ "node": "YouTube Transcript API", "type": "main", "index": 0 }],
+        [{ "node": "Scrape Blog Post", "type": "main", "index": 0 }],
+        [{ "node": "Process Memo Input", "type": "main", "index": 0 }]
+      ]
+    },
+    "YouTube Transcript API": {
+      "main": [[{ "node": "Process YouTube Transcript", "type": "main", "index": 0 }]]
+    },
+    "Process YouTube Transcript": {
+      "main": [[{ "node": "Merge Input Branches", "type": "main", "index": 0 }]]
+    },
+    "Scrape Blog Post": {
+      "main": [[{ "node": "Process Blog Content", "type": "main", "index": 0 }]]
+    },
+    "Process Blog Content": {
+      "main": [[{ "node": "Merge Input Branches", "type": "main", "index": 0 }]]
+    },
+    "Process Memo Input": {
+      "main": [[{ "node": "Merge Input Branches", "type": "main", "index": 0 }]]
+    },
+    "Merge Input Branches": {
       "main": [
         [{ "node": "Get Company Data", "type": "main", "index": 0 }],
-        [{ "node": "Get Reference Post (Optional)", "type": "main", "index": 0 }]
+        [{ "node": "Get Selected Reference Posts", "type": "main", "index": 0 }]
       ]
     },
     "Get Company Data": {
-      "main": [[{ "node": "Prepare AI Prompt", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Aggregate Reference Posts", "type": "main", "index": 0 }]]
     },
-    "Get Reference Post (Optional)": {
+    "Get Selected Reference Posts": {
+      "main": [[{ "node": "Aggregate Reference Posts", "type": "main", "index": 0 }]]
+    },
+    "Aggregate Reference Posts": {
       "main": [[{ "node": "Prepare AI Prompt", "type": "main", "index": 0 }]]
     },
     "Prepare AI Prompt": {
@@ -373,30 +697,72 @@
       "main": [[{ "node": "Parse AI Content", "type": "main", "index": 0 }]]
     },
     "Parse AI Content": {
-      "main": [[{ "node": "Update Generated Post", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Split Posts", "type": "main", "index": 0 }]]
     },
-    "Update Generated Post": {
-      "main": [[{ "node": "Check Image Generation", "type": "main", "index": 0 }]]
+    "Split Posts": {
+      "main": [[{ "node": "Generate Image Prompt", "type": "main", "index": 0 }]]
     },
-    "Check Image Generation": {
+    "Generate Image Prompt": {
+      "main": [[{ "node": "Google nano banana Generate", "type": "main", "index": 0 }]]
+    },
+    "Google nano banana Generate": {
+      "main": [[{ "node": "Process Image Response", "type": "main", "index": 0 }]]
+    },
+    "Process Image Response": {
       "main": [
-        [{ "node": "Prepare Image Prompt", "type": "main", "index": 0 }],
-        [{ "node": "Webhook Response", "type": "main", "index": 0 }]
+        [{ "node": "Download Image if Needed", "type": "main", "index": 0 }],
+        [{ "node": "Prepare File Upload", "type": "main", "index": 0 }]
       ]
     },
-    "Prepare Image Prompt": {
-      "main": [[{ "node": "DALL-E API Call", "type": "main", "index": 0 }]]
+    "Download Image if Needed": {
+      "main": [[{ "node": "Prepare File Upload", "type": "main", "index": 0 }]]
     },
-    "DALL-E API Call": {
-      "main": [[{ "node": "Download Generated Image", "type": "main", "index": 0 }]]
+    "Prepare File Upload": {
+      "main": [[{ "node": "Upload to Supabase Storage", "type": "main", "index": 0 }]]
     },
-    "Download Generated Image": {
-      "main": [[{ "node": "Upload Image to API", "type": "main", "index": 0 }]]
+    "Upload to Supabase Storage": {
+      "main": [[{ "node": "Generate Public URL", "type": "main", "index": 0 }]]
     },
-    "Upload Image to API": {
-      "main": [[{ "node": "Link Image to Post", "type": "main", "index": 0 }]]
+    "Generate Public URL": {
+      "main": [[{ "node": "Update Post with Image", "type": "main", "index": 0 }]]
     },
-    "Link Image to Post": {
+    "Update Post with Image": {
+      "main": [
+        [{ "node": "Check Slideshow Generation", "type": "main", "index": 0 }],
+        [{ "node": "Prepare Final Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Slideshow Generation": {
+      "main": [
+        [{ "node": "Prepare Slideshow Data", "type": "main", "index": 0 }],
+        [{ "node": "Prepare Final Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Prepare Slideshow Data": {
+      "main": [[{ "node": "Generate Slideshow Prompts", "type": "main", "index": 0 }]]
+    },
+    "Generate Slideshow Prompts": {
+      "main": [[{ "node": "Split Slideshow Prompts", "type": "main", "index": 0 }]]
+    },
+    "Split Slideshow Prompts": {
+      "main": [[{ "node": "Generate Slideshow Image", "type": "main", "index": 0 }]]
+    },
+    "Generate Slideshow Image": {
+      "main": [[{ "node": "Process Slideshow Image", "type": "main", "index": 0 }]]
+    },
+    "Process Slideshow Image": {
+      "main": [[{ "node": "Upload Slideshow Image", "type": "main", "index": 0 }]]
+    },
+    "Upload Slideshow Image": {
+      "main": [[{ "node": "Aggregate Slideshow", "type": "main", "index": 0 }]]
+    },
+    "Aggregate Slideshow": {
+      "main": [[{ "node": "Save Slideshow Metadata", "type": "main", "index": 0 }]]
+    },
+    "Save Slideshow Metadata": {
+      "main": [[{ "node": "Prepare Final Response", "type": "main", "index": 0 }]]
+    },
+    "Prepare Final Response": {
       "main": [[{ "node": "Webhook Response", "type": "main", "index": 0 }]]
     }
   },
@@ -408,5 +774,5 @@
   "tags": [],
   "triggerCount": 1,
   "updatedAt": "2025-01-27T12:00:00.000Z",
-  "versionId": "1"
+  "versionId": "2"
 }

@@ -30,11 +30,48 @@ export interface ReferencePostScrapingPayload {
 }
 
 /**
+ * Content Input Types
+ */
+export enum ContentInputType {
+  YOUTUBE = 'youtube',
+  BLOG = 'blog',
+  MEMO = 'memo',
+}
+
+/**
+ * Call-to-Action Types
+ */
+export enum CTAType {
+  COMMENT = 'comment',
+  VISIT_WEBSITE = 'visit_website',
+  FOLLOW = 'follow',
+  CONNECT = 'connect',
+}
+
+/**
+ * Generated Post Structure
+ */
+export interface GeneratedPost {
+  id: string;
+  title: string;
+  contentType: 'story_based' | 'insight_focused' | 'engagement_focused';
+  imageUrl?: string;
+  status: string;
+}
+
+/**
  * Content Generation Payload
  */
 export interface ContentGenerationPayload {
   generatedPostId: string;
+  inputType?: ContentInputType | 'youtube' | 'blog' | 'memo';
+  inputUrl?: string; // For YouTube/Blog
+  inputText?: string; // For Memo
   generateImage?: boolean;
+  generateSlideshow?: boolean;
+  customInstructions?: string;
+  customImageInstructions?: string;
+  cta?: CTAType | 'comment' | 'visit_website' | 'follow' | 'connect';
 }
 
 /**
@@ -50,11 +87,9 @@ export type MasterWebhookRequest =
       companyId: string;
       linkedinUrl: string;
     }
-  | {
+  | ({
       action: WebhookAction.GENERATE_CONTENT;
-      generatedPostId: string;
-      generateImage?: boolean;
-    };
+    } & ContentGenerationPayload);
 
 /**
  * Company Research Response
@@ -84,6 +119,8 @@ export interface ContentGenerationResponse {
   success: boolean;
   action: WebhookAction.GENERATE_CONTENT;
   generatedPostId: string;
+  generatedPosts?: GeneratedPost[];
+  slideshowUrl?: string;
   message?: string;
 }
 

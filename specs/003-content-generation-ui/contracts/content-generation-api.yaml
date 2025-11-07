@@ -1,0 +1,605 @@
+openapi: 3.0.3
+info:
+  title: Content Generation UI API
+  description: API-Endpoints für Content Generation UI (Posts Liste, Detail, Generation, Status Updates)
+  version: 1.0.0
+  contact:
+    name: WA LinkedIn Manager
+    email: support@example.com
+
+servers:
+  - url: http://localhost:3000/api
+    description: Development Server
+  - url: https://api.example.com/api
+    description: Production Server
+
+paths:
+  /posts:
+    get:
+      summary: Liste aller Generated Posts
+      description: Ruft eine gefilterte und durchsuchbare Liste von Generated Posts ab
+      operationId: listPosts
+      tags:
+        - Posts
+      parameters:
+        - name: status
+          in: query
+          description: Filter nach Status
+          required: false
+          schema:
+            type: string
+            enum: [draft, review, approved, scheduled, published, rejected]
+        - name: company
+          in: query
+          description: Filter nach Company ID
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: writingStyle
+          in: query
+          description: Filter nach Writing Style
+          required: false
+          schema:
+            type: string
+            enum: [story_based, insight_focused, engagement_focused]
+        - name: category
+          in: query
+          description: Filter nach Category
+          required: false
+          schema:
+            type: string
+            enum: [thought_leadership, industry_insights, company_updates, educational, behind_scenes, case_studies]
+        - name: search
+          in: query
+          description: Suche nach Titel oder Inhalt
+          required: false
+          schema:
+            type: string
+        - name: sortBy
+          in: query
+          description: Sortierung nach Feld
+          required: false
+          schema:
+            type: string
+            enum: [createdAt, updatedAt, title]
+            default: createdAt
+        - name: sortOrder
+          in: query
+          description: Sortierreihenfolge
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+        - name: page
+          in: query
+          description: Seitenzahl (Pagination)
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: Anzahl Ergebnisse pro Seite
+          required: false
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: Erfolgreiche Abfrage
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostsListResponse'
+        '401':
+          description: Nicht authentifiziert
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Keine Berechtigung
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /posts/{id}:
+    get:
+      summary: Einzelnen Generated Post abrufen
+      description: Ruft Details eines Generated Posts ab, inklusive aller Varianten mit verschiedenen Schreibstilen
+      operationId: getPost
+      tags:
+        - Posts
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Post ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Erfolgreiche Abfrage
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostDetailResponse'
+        '404':
+          description: Post nicht gefunden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Nicht authentifiziert
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Keine Berechtigung
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Generated Post aktualisieren
+      description: Aktualisiert einen Generated Post (Titel, Content, Writing Style, Category, Tags, Status)
+      operationId: updatePost
+      tags:
+        - Posts
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Post ID
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostUpdateRequest'
+      responses:
+        '200':
+          description: Erfolgreich aktualisiert
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostDetailResponse'
+        '400':
+          description: Validierungsfehler oder ungültige Status-Transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Post nicht gefunden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Nicht authentifiziert
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Keine Berechtigung
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /generate:
+    post:
+      summary: Content Generation Request erstellen
+      description: Erstellt einen Content Generation Request (YouTube, Blog oder Memo) und triggert n8n Workflow
+      operationId: createContentGenerationRequest
+      tags:
+        - Content Generation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentGenerationRequest'
+      responses:
+        '201':
+          description: Content Generation Request erfolgreich erstellt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentGenerationResponse'
+        '400':
+          description: Validierungsfehler (z.B. ungültige URL, Memo zu kurz)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Company nicht gefunden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Nicht authentifiziert
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Keine Berechtigung (nur Content Creator, Manager, Admin)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /status:
+    get:
+      summary: Real-time Status Updates (SSE)
+      description: Server-Sent Events Stream für Real-time Status-Updates während Content-Generierung
+      operationId: getStatusUpdates
+      tags:
+        - Status Updates
+      parameters:
+        - name: postId
+          in: query
+          description: Post ID für Status-Updates
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: SSE Stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+              example: |
+                event: status_update
+                data: {"postId":"65a1b2c3d4e5f6g7h8i9j0k1","status":"in_progress","step":"Transkript wird verarbeitet...","progress":25,"timestamp":"2025-01-27T10:00:00Z"}
+
+                event: progress_update
+                data: {"postId":"65a1b2c3d4e5f6g7h8i9j0k1","status":"in_progress","step":"AI generiert Content...","progress":50,"timestamp":"2025-01-27T10:00:30Z"}
+
+                event: completed
+                data: {"postId":"65a1b2c3d4e5f6g7h8i9j0k1","status":"completed","step":"Content-Generierung abgeschlossen","progress":100,"timestamp":"2025-01-27T10:01:00Z"}
+        '400':
+          description: Ungültige Post ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Nicht authentifiziert
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Post nicht gefunden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /companies/{id}:
+    get:
+      summary: Company Information abrufen
+      description: Ruft Company-Informationen ab (Business Overview, ICP, Value Proposition)
+      operationId: getCompanyInfo
+      tags:
+        - Companies
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Company ID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Erfolgreiche Abfrage
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyInfoResponse'
+        '404':
+          description: Company nicht gefunden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Nicht authentifiziert
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Keine Berechtigung
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    Post:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        company:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+        referencePost:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+              format: uuid
+        title:
+          type: string
+        content:
+          type: object
+          description: RichText Lexical Format
+        writingStyle:
+          type: string
+          enum: [story_based, insight_focused, engagement_focused]
+        status:
+          type: string
+          enum: [draft, review, approved, scheduled, published, rejected]
+        category:
+          type: string
+          enum: [thought_leadership, industry_insights, company_updates, educational, behind_scenes, case_studies]
+        tags:
+          type: array
+          items:
+            type: string
+        images:
+          type: array
+          items:
+            type: object
+            properties:
+              image:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  url:
+                    type: string
+        aiPrompt:
+          type: string
+          nullable: true
+        aiModel:
+          type: string
+          nullable: true
+        generatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        reviewedBy:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+            email:
+              type: string
+        reviewComments:
+          type: string
+          nullable: true
+        reviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+        scheduledFor:
+          type: string
+          format: date-time
+          nullable: true
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PostsListResponse:
+      type: object
+      properties:
+        docs:
+          type: array
+          items:
+            $ref: '#/components/schemas/Post'
+        totalDocs:
+          type: integer
+        limit:
+          type: integer
+        totalPages:
+          type: integer
+        page:
+          type: integer
+        hasPrevPage:
+          type: boolean
+        hasNextPage:
+          type: boolean
+
+    PostDetailResponse:
+      type: object
+      properties:
+        post:
+          $ref: '#/components/schemas/Post'
+        variants:
+          type: array
+          description: Posts mit verschiedenen Schreibstilen vom gleichen Content Request
+          items:
+            $ref: '#/components/schemas/Post'
+
+    PostUpdateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        content:
+          type: object
+          description: RichText Lexical Format
+        writingStyle:
+          type: string
+          enum: [story_based, insight_focused, engagement_focused]
+        category:
+          type: string
+          enum: [thought_leadership, industry_insights, company_updates, educational, behind_scenes, case_studies]
+        tags:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [draft, review, approved, scheduled, published, rejected]
+        reviewComments:
+          type: string
+        scheduledFor:
+          type: string
+          format: date-time
+
+    ContentGenerationRequest:
+      type: object
+      required:
+        - inputType
+        - company
+      properties:
+        inputType:
+          type: string
+          enum: [youtube, blog, memo]
+        youtubeUrl:
+          type: string
+          description: Required wenn inputType === 'youtube'
+        blogUrl:
+          type: string
+          description: Required wenn inputType === 'blog'
+        memoText:
+          type: string
+          minLength: 50
+          description: Required wenn inputType === 'memo', mindestens 50 Zeichen
+        company:
+          type: string
+          format: uuid
+        customInstructions:
+          type: string
+        callToAction:
+          type: string
+        generateImage:
+          type: boolean
+          default: false
+
+    ContentGenerationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        posts:
+          type: array
+          description: Erstellte Generated Posts (3 Posts mit verschiedenen Schreibstilen)
+          items:
+            $ref: '#/components/schemas/Post'
+        message:
+          type: string
+
+    StatusUpdateEvent:
+      type: object
+      properties:
+        postId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, in_progress, completed, failed]
+        step:
+          type: string
+          nullable: true
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+          nullable: true
+        error:
+          type: string
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+
+    CompanyInfoResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        industry:
+          type: string
+          nullable: true
+        businessOverview:
+          type: string
+          nullable: true
+        idealCustomerProfile:
+          type: string
+          nullable: true
+        valueProposition:
+          type: string
+          nullable: true
+        researchStatus:
+          type: string
+          enum: [pending, in_progress, completed, failed]
+        lastResearchAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+        code:
+          type: string
+          enum: [VALIDATION_ERROR, NOT_FOUND, UNAUTHORIZED, FORBIDDEN, STATUS_TRANSITION_ERROR, INTERNAL_ERROR]
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+

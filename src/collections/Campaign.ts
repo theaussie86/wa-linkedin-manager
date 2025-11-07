@@ -13,9 +13,13 @@ export const Campaign: CollectionConfig = {
       if (!user?.company) {
         return false // User has no company assigned
       }
+      const companyId =
+        typeof user.company === 'string' || typeof user.company === 'number'
+          ? user.company
+          : user.company.id
       return {
         company: {
-          equals: typeof user.company === 'string' ? user.company : user.company.id,
+          equals: companyId,
         },
       }
     },
@@ -28,9 +32,13 @@ export const Campaign: CollectionConfig = {
       if (!user?.company) {
         return false // User has no company assigned
       }
+      const companyId =
+        typeof user.company === 'string' || typeof user.company === 'number'
+          ? user.company
+          : user.company.id
       return {
         company: {
-          equals: typeof user.company === 'string' ? user.company : user.company.id,
+          equals: companyId,
         },
       }
     },
@@ -45,13 +53,54 @@ export const Campaign: CollectionConfig = {
       type: 'relationship',
       relationTo: 'companies',
       required: true,
+      admin: {
+        description: 'Wählen Sie die Company für diese Campaign aus',
+      },
+      // @ts-expect-error - Payload CMS filterOptions type inference issue
+      filterOptions: ({ user }) => {
+        // Admins and managers can see all active companies
+        if (user?.role === 'admin' || user?.role === 'manager') {
+          return {
+            isActive: {
+              equals: true,
+            },
+          }
+        }
+        // Other users can only see their own company
+        if (user?.company) {
+          const companyId =
+            typeof user.company === 'string' || typeof user.company === 'number'
+              ? user.company
+              : String((user.company as { id: string | number }).id)
+          return {
+            and: [
+              {
+                id: {
+                  equals: companyId,
+                },
+              },
+              {
+                isActive: {
+                  equals: true,
+                },
+              },
+            ],
+          }
+        }
+        // User has no company assigned - return empty filter (no companies available)
+        return {
+          id: {
+            equals: 'nonexistent-id-that-will-never-match',
+          },
+        }
+      },
     },
     {
       name: 'name',
       type: 'text',
       required: true,
-      validate: (val) => {
-        if (!val || val.length < 2) {
+      validate: (val: unknown) => {
+        if (!val || (typeof val === 'string' && val.length < 2)) {
           return 'Campaign name must be at least 2 characters long'
         }
         return true
@@ -69,9 +118,19 @@ export const Campaign: CollectionConfig = {
     {
       name: 'endDate',
       type: 'date',
-      validate: (val, { siblingData }) => {
-        if (val && siblingData.startDate && new Date(val) <= new Date(siblingData.startDate)) {
-          return 'End date must be after start date'
+      validate: (
+        val: unknown,
+        { siblingData }: { siblingData?: { startDate?: string | Date } },
+      ) => {
+        if (val && siblingData?.startDate) {
+          const endDate = val instanceof Date ? val : new Date(val as string)
+          const startDate =
+            siblingData.startDate instanceof Date
+              ? siblingData.startDate
+              : new Date(siblingData.startDate)
+          if (endDate <= startDate) {
+            return 'End date must be after start date'
+          }
         }
         return true
       },
@@ -156,11 +215,11 @@ export const Campaign: CollectionConfig = {
           data.name = data.name.trim()
         }
         // Ensure status defaults to draft on create
-        if (operation === 'create' && !data?.status) {
+        if (operation === 'create' && data && !data.status) {
           data.status = 'draft'
         }
         // Ensure isActive defaults to true on create
-        if (operation === 'create' && data?.isActive === undefined) {
+        if (operation === 'create' && data && data.isActive === undefined) {
           data.isActive = true
         }
         return data

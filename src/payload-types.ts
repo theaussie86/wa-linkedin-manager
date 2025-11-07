@@ -513,6 +513,9 @@ export interface PostAnalytic {
  */
 export interface Campaign {
   id: number;
+  /**
+   * Wählen Sie die Company für diese Campaign aus
+   */
   company: number | Company;
   name: string;
   description?: string | null;
